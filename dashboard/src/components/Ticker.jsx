@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { themeStyle } from '../config.js';
+import { APP_URL, themeStyle } from '../config.js';
 
 // Lauftext-Geschwindigkeit in Bildschirmbreiten pro Sekunde
 const SPEED = 0.075;
@@ -7,7 +7,7 @@ const FILLER_BATCH = 6;
 const WELCOME = {
   id: 'welcome',
   type: 'info',
-  message: '🎮 Willkommen zur LAN-Party Challenge! App öffnen, Namen eintragen, lostickern! 🚀',
+  message: `🎮 Willkommen zur LAN-Party Challenge! App öffnen, Namen eintragen, lostickern! 🚀 iPhone? Einfach im Browser: ${APP_URL.replace(/^https?:\/\//, '')}`,
 };
 
 const timeFormatter = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });

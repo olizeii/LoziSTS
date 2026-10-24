@@ -16,6 +16,7 @@ const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'lanparty.db');
 const STATIC_DIR = process.env.STATIC_DIR || path.join(__dirname, '..', '..', 'dashboard', 'dist');
+const WEB_APP_DIR = process.env.WEB_APP_DIR || path.join(__dirname, '..', '..', 'mobile', 'dist-web');
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 
 const MAX_NAME_LENGTH = 24;
@@ -216,11 +217,27 @@ api.post('/admin/reset', async (req, res, next) => {
 
 app.use('/api', api);
 
+// --- Browser-Version der App unter /app (für iPhone & Co.) -----------------------
+
+const webAppIndex = path.join(WEB_APP_DIR, 'index.html');
+// Mit Slash am Ende, damit relative Pfade (z. B. apple-touch-icon.png) unter /app/ landen
+app.get(/^\/app$/, (_req, res) => res.redirect(301, '/app/'));
+if (fs.existsSync(webAppIndex)) {
+  app.use('/app', express.static(WEB_APP_DIR, { index: false }));
+  // index.html nie cachen, damit Handys nach einem Update sofort die neue Version laden
+  app.get(/^\/app(\/.*)?$/, (_req, res) => res.set('Cache-Control', 'no-cache').sendFile(webAppIndex));
+  console.log(`[http] Browser-App wird ausgeliefert aus ${WEB_APP_DIR} unter /app`);
+} else {
+  app.get(/^\/app\/.*$/, (_req, res) => {
+    res.type('text').send('Browser-App ist noch nicht gebaut: cd mobile && npm run export:web');
+  });
+}
+
 // --- Dashboard (wird ab Schritt 2/4 als statischer Build ausgeliefert) ------------
 
 if (fs.existsSync(path.join(STATIC_DIR, 'index.html'))) {
   app.use(express.static(STATIC_DIR));
-  app.get(/^\/(?!api|socket\.io).*/, (_req, res) => res.sendFile(path.join(STATIC_DIR, 'index.html')));
+  app.get(/^\/(?!api|socket\.io|app\/).*/, (_req, res) => res.sendFile(path.join(STATIC_DIR, 'index.html')));
   console.log(`[http] Dashboard wird ausgeliefert aus ${STATIC_DIR}`);
 } else {
   app.get('/', (_req, res) => {

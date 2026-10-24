@@ -1,11 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DartPad } from '../components/DartPad';
 import { formatNumber, SectionTitle, TurnRow } from '../components/DartsWidgets';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Toast, useToast } from '../components/Toast';
+import { confirmAction } from '../confirm';
 import { COLORS } from '../theme';
 
 const RECENT_FREE_TURNS = 8;
@@ -43,19 +44,17 @@ export function DartFreeScreen({ name, tracker, goBack }) {
     return true;
   }
 
-  function confirmUndo() {
-    Alert.alert('Letzte Aufnahme zurücknehmen?', 'Deine letzte freie Aufnahme wird wieder abgezogen.', [
-      { text: 'Abbrechen', style: 'cancel' },
-      {
-        text: 'Zurücknehmen',
-        style: 'destructive',
-        onPress: async () => {
-          const res = await darts.undoTurn(name, null);
-          showToast(res.ok ? res.event.message : `❌ ${res.error}`, res.ok ? 'info' : 'error');
-          if (res.ok) loadRecent();
-        },
-      },
-    ]);
+  async function confirmUndo() {
+    const confirmed = await confirmAction({
+      title: 'Letzte Aufnahme zurücknehmen?',
+      message: 'Deine letzte freie Aufnahme wird wieder abgezogen.',
+      confirmText: 'Zurücknehmen',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    const res = await darts.undoTurn(name, null);
+    showToast(res.ok ? res.event.message : `❌ ${res.error}`, res.ok ? 'info' : 'error');
+    if (res.ok) loadRecent();
   }
 
   return (

@@ -1,4 +1,5 @@
 import { EVENT_TITLE } from '../config.js';
+import { AppQrCode } from './AppQrCode.jsx';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber.js';
 import { useClock } from '../hooks/useClock.js';
 
@@ -17,10 +18,10 @@ export function Header({ state, connected, muted, onToggleMute }) {
           🎮
         </div>
         <div>
-          <h1 className="title-gradient font-display text-[4.2vh] leading-none font-black tracking-[0.12em] uppercase">
+          <h1 className="title-gradient font-display text-[3.7vh] leading-none font-black tracking-[0.1em] whitespace-nowrap uppercase">
             {EVENT_TITLE}
           </h1>
-          <p className="mt-[0.6vh] text-[1.9vh] font-semibold tracking-[0.35em] text-muted uppercase">
+          <p className="mt-[0.6vh] text-[1.6vh] font-semibold tracking-[0.25em] whitespace-nowrap text-muted uppercase">
             Gemeinsam knacken wir alle {state?.challenges.length ?? ''} Challenges
           </p>
         </div>
@@ -30,6 +31,7 @@ export function Header({ state, connected, muted, onToggleMute }) {
         <Stat label="Gesamt" value={`${animatedOverall.toFixed(1)}%`} highlight />
         <Stat label="Spieler" value={state?.players ?? 0} />
         <Stat label="Ticks" value={Math.round(animatedEvents)} />
+        <AppQrCode />
 
         <div
           className={`flex h-[7vh] items-center gap-[0.6vw] rounded-[1.2vh] border px-[1vw] font-display text-[1.8vh] font-bold tracking-widest ${
@@ -65,7 +67,7 @@ export function Header({ state, connected, muted, onToggleMute }) {
 
 function Stat({ label, value, highlight = false }) {
   return (
-    <div className="flex h-[7vh] min-w-[7.5vw] flex-col items-center justify-center rounded-[1.2vh] border border-white/10 bg-white/5 px-[1vw]">
+    <div className="flex h-[7vh] min-w-[6vw] flex-col items-center justify-center rounded-[1.2vh] border border-white/10 bg-white/5 px-[0.8vw]">
       <span className="text-[1.5vh] font-bold tracking-[0.3em] text-muted uppercase">{label}</span>
       <span
         className={`font-display text-[2.8vh] leading-tight font-black tabular-nums ${

@@ -1,11 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DartPad } from '../components/DartPad';
 import { formatNumber, SectionTitle, TurnRow } from '../components/DartsWidgets';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Toast, useToast } from '../components/Toast';
+import { confirmAction } from '../confirm';
 import { COLORS, DARTS_COLOR, FONTS } from '../theme';
 
 function haptic(type) {
@@ -66,32 +67,28 @@ export function DartGameScreen({ name, tracker, gameId, goBack, replace }) {
     return true;
   }
 
-  function confirmUndo() {
-    Alert.alert('Letzte Aufnahme zurücknehmen?', 'Die letzte Aufnahme in diesem Spiel wird gelöscht.', [
-      { text: 'Abbrechen', style: 'cancel' },
-      {
-        text: 'Zurücknehmen',
-        style: 'destructive',
-        onPress: async () => {
-          const res = await darts.undoTurn(name, gameId);
-          showToast(res.ok ? res.event.message : `❌ ${res.error}`, res.ok ? 'info' : 'error');
-        },
-      },
-    ]);
+  async function confirmUndo() {
+    const confirmed = await confirmAction({
+      title: 'Letzte Aufnahme zurücknehmen?',
+      message: 'Die letzte Aufnahme in diesem Spiel wird gelöscht.',
+      confirmText: 'Zurücknehmen',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    const res = await darts.undoTurn(name, gameId);
+    showToast(res.ok ? res.event.message : `❌ ${res.error}`, res.ok ? 'info' : 'error');
   }
 
-  function confirmAbort() {
-    Alert.alert('Spiel abbrechen?', 'Geworfene Punkte bleiben in der 10.001 erhalten.', [
-      { text: 'Weiterspielen', style: 'cancel' },
-      {
-        text: 'Abbrechen',
-        style: 'destructive',
-        onPress: async () => {
-          const res = await darts.abortGame(name, gameId);
-          if (!res.ok) showToast(`❌ ${res.error}`, 'error');
-        },
-      },
-    ]);
+  async function confirmAbort() {
+    const confirmed = await confirmAction({
+      title: 'Spiel abbrechen?',
+      message: 'Geworfene Punkte bleiben in der 10.001 erhalten.',
+      confirmText: 'Spiel abbrechen',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    const res = await darts.abortGame(name, gameId);
+    if (!res.ok) showToast(`❌ ${res.error}`, 'error');
   }
 
   async function rematch() {

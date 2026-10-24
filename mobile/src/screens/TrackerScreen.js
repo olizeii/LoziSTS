@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChallengeButton } from '../components/ChallengeButton';
 import { ConnectionBadge } from '../components/ConnectionBadge';
@@ -8,6 +8,7 @@ import { formatNumber } from '../components/DartsWidgets';
 import { AdminResetModal } from '../components/AdminResetModal';
 import { Toast } from '../components/Toast';
 import { SERVER_ADDRESS } from '../config';
+import { confirmAction } from '../confirm';
 import { COLORS, DARTS_COLOR, FONTS } from '../theme';
 
 function haptic(fn) {
@@ -84,37 +85,33 @@ export function TrackerScreen({ name, tracker, onChangeName, onOpenDarts }) {
     [name, tick, showToast],
   );
 
-  const confirmUndo = useCallback(() => {
-    Alert.alert('Letzten Tick zurücknehmen?', 'Dein zuletzt getickter Eintrag wird wieder abgezogen.', [
-      { text: 'Abbrechen', style: 'cancel' },
-      {
-        text: 'Zurücknehmen',
-        style: 'destructive',
-        onPress: async () => {
-          setUndoing(true);
-          const res = await undo(name);
-          setUndoing(false);
-          if (res.ok) {
-            haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
-            showToast(res.event.message, 'info');
-          } else {
-            haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
-            showToast(`❌ ${res.error}`, 'error');
-          }
-        },
-      },
-    ]);
+  const confirmUndo = useCallback(async () => {
+    const confirmed = await confirmAction({
+      title: 'Letzten Tick zurücknehmen?',
+      message: 'Dein zuletzt getickter Eintrag wird wieder abgezogen.',
+      confirmText: 'Zurücknehmen',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    setUndoing(true);
+    const res = await undo(name);
+    setUndoing(false);
+    if (res.ok) {
+      haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
+      showToast(res.event.message, 'info');
+    } else {
+      haptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
+      showToast(`❌ ${res.error}`, 'error');
+    }
   }, [name, undo, showToast]);
 
-  const confirmNameChange = useCallback(() => {
-    Alert.alert(
-      'Namen ändern?',
-      'Neue Ticks zählen dann für den neuen Namen. Bisherige Punkte bleiben beim alten Namen.',
-      [
-        { text: 'Abbrechen', style: 'cancel' },
-        { text: 'Ändern', onPress: onChangeName },
-      ],
-    );
+  const confirmNameChange = useCallback(async () => {
+    const confirmed = await confirmAction({
+      title: 'Namen ändern?',
+      message: 'Neue Ticks zählen dann für den neuen Namen. Bisherige Punkte bleiben beim alten Namen.',
+      confirmText: 'Ändern',
+    });
+    if (confirmed) onChangeName();
   }, [onChangeName]);
 
   const myChallengeCount = state

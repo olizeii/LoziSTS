@@ -7,4 +7,8 @@
 
 backend/data
 dashboard/dist
-mobile
+mobile/.expo
+mobile/.claude
+mobile/dist
+mobile/dist-web
+mobile/web-build

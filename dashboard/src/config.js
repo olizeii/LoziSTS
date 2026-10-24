@@ -3,6 +3,9 @@ export const SERVER_URL = import.meta.env.VITE_SERVER_URL || window.location.ori
 
 export const EVENT_TITLE = import.meta.env.VITE_EVENT_TITLE || 'LAN-PARTY CHALLENGE';
 
+// Browser-Version der App (wird vom gleichen Server unter /app ausgeliefert)
+export const APP_URL = import.meta.env.VITE_APP_URL || `${SERVER_URL.replace(/\/$/, '')}/app/`;
+
 // ?autostart überspringt den Start-Screen (z. B. Chrome-Kiosk mit --autoplay-policy=no-user-gesture-required)
 export const AUTOSTART = new URLSearchParams(window.location.search).has('autostart');
 

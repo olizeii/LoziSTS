@@ -46,22 +46,23 @@ docker compose up -d --build
 | Dienst | Container        | Adresse                       | Zweck                                  |
 |--------|------------------|-------------------------------|----------------------------------------|
 | `app`  | `lan-party-app`  | `http://10.0.0.210:3000`      | Backend + TV-Dashboard (Fernseher öffnet diese Seite) |
+| `app`  | `lan-party-app`  | `http://10.0.0.210:3000/app`  | **Browser-Version der App** (iPhone & alle ohne Expo Go) |
 | `expo` | `lan-party-expo` | `exp://10.0.0.210:8081`       | App-Code für Expo Go (kein Laptop nötig) |
 
-**Handys verbinden:** Expo Go öffnen → „Enter URL manually“ → `exp://10.0.0.210:8081`.
+### 📱 Handys verbinden
 
-**iPhone:**
-1. iPhone ins gleiche WLAN wie der Server.
-2. „Expo Go“ aus dem App Store installieren.
-3. In Safari `exp://10.0.0.210:8081` in die Adresszeile tippen → „In Expo Go öffnen“
-   (oder in Expo Go „Enter URL manually“).
-4. Die Frage nach **„Lokales Netzwerk“ erlauben**. Falls abgelehnt: Einstellungen → Datenschutz & Sicherheit →
-   Lokales Netzwerk → Expo Go einschalten, dann Expo Go neu starten.
-5. Namen eingeben – fertig. Beim nächsten Mal steht das Projekt in Expo Go unter „Recently opened“.
+**iPhone (und jedes andere Handy) – im Browser, ohne Installation:**
+1. Handy ins gleiche WLAN wie der Server.
+2. QR-Code oben rechts auf dem TV mit der Kamera scannen – oder in Safari `http://10.0.0.210:3000/app` öffnen.
+3. Namen eingeben – fertig. Gleiche Funktionen wie die App (Ticks, Darts, Spiele, Undo, versteckter Reset).
+4. Tipp: In Safari „Teilen“ → **„Zum Home-Bildschirm“** – dann startet sie wie eine echte App im Vollbild.
 
-Zeigt Expo Go „Project is incompatible with this version of Expo Go“, passt die SDK-Version des Projekts
-nicht mehr zur App-Store-Version von Expo Go → Projekt auf die neueste SDK heben (`npx expo install expo@latest --fix`).
+Die Browser-Version wird beim Docker-Build automatisch mitgebaut und ist dadurch immer auf dem gleichen Stand wie der Server.
+
+**Android mit Expo Go:** Expo Go öffnen → „Enter URL manually“ → `exp://10.0.0.210:8081`.
 Der erste Start dauert etwas (Metro baut das Bundle), danach ist es schnell.
+Nach einem Update zeigt Expo Go manchmal noch die alte Version: Expo Go komplett schließen und neu öffnen
+(oder Handy schütteln → „Reload“).
 
 **Ohne Internet auf der Party:** in `docker-compose.yml` beim Dienst `expo` die Zeile `EXPO_OFFLINE: "1"` einkommentieren.
 
@@ -77,7 +78,8 @@ Der erste Start dauert etwas (Metro baut das Bundle), danach ist es schnell.
 | `docker compose logs -f expo` | Expo-Log (Bundling, Fehler der App) |
 | `docker compose restart` | Neustart |
 | `docker compose down` | Stoppen (Daten bleiben erhalten) |
-| `git pull && docker compose up -d --build` | Update einspielen |
+| `git pull && docker compose up -d --build --force-recreate` | Update einspielen (App, Browser-App, Dashboard, Expo) |
+| `docker compose exec app node scripts/reset-db.js --yes && docker compose restart app` | Alles löschen ohne Passwort (direkt auf dem Server) |
 | `docker compose cp app:/data/lanparty.db ./backup-lanparty.db` | Datenbank-Backup ziehen |
 | `curl -X POST -H "x-admin-token: DEIN_TOKEN" http://10.0.0.210:3000/api/admin/reset` | Alle Ticks löschen (vor der Party) |
 
@@ -164,7 +166,9 @@ Nach einer Änderung die App in Expo Go neu laden (Handy schütteln → Reload).
 - 5 Buttons mit festen Schritten: Rubik's Cube +1, Liegestütze +5, Laufen +1 km, Trichter +1, Bier +1
 - Darts-Karte → Dart-Tracker: frei werfen, Spiele anlegen/mitzählen, „Meine Würfe“
 - „Letzten Tick zurücknehmen“ für Vertipper (Darts haben ein eigenes Undo pro Aufnahme), „Name ändern“ oben links
-- `npx expo start --web` startet eine Browser-Vorschau zum Testen ohne Handy (Bestätigungsdialoge funktionieren dort nicht)
+- `npx expo start --web` startet eine Browser-Vorschau zum Testen ohne Handy
+- `npm run export:web` baut die Browser-Version nach `mobile/dist-web`; das Backend liefert sie unter `/app` aus
+  (im Docker-Image passiert das automatisch)
 
 **Eigene Sounds:** Dateien in `dashboard/public/sounds/` ersetzen (`tick`, `undo`, `milestone`, `complete`, `bust`, `oneEighty`, `checkout`).
 Für `.mp3` die Pfade in `dashboard/src/lib/sound.js` anpassen. Die Standard-Sounds erzeugt `npm run sounds` neu.

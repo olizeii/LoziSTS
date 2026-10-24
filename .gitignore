@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.expo/
+*.log
+
+# SQLite-Datenbank (Laufzeitdaten)
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
+
+# Lokale Umgebungsdateien
+.env
+.env.local
+!.env.example

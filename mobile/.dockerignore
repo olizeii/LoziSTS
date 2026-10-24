@@ -1,0 +1,9 @@
+node_modules
+.expo
+.claude
+dist
+web-build
+# Server-IP kommt im Container aus docker-compose.yml (EXPO_PUBLIC_SERVER_IP)
+.env
+.env.local
+*.log

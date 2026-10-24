@@ -1,0 +1,27 @@
+{
+  "name": "lan-party-tracker-dashboard",
+  "version": "1.0.0",
+  "description": "TV-Dashboard für den LAN-Party Challenge Tracker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "sounds": "node scripts/generate-sounds.mjs"
+  },
+  "dependencies": {
+    "@fontsource/orbitron": "^5.3.0",
+    "@fontsource/rajdhani": "^5.3.0",
+    "canvas-confetti": "^1.9.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io-client": "^4.8.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^6.4.5"
+  }
+}

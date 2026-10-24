@@ -1,0 +1,47 @@
+# LAN-Party Challenge Tracker
+# Start auf dem Server:  docker compose up -d --build
+# Einstellungen: .env neben dieser Datei (Vorlage: .env.example)
+
+name: lan-party-tracker
+
+services:
+  # Backend + TV-Dashboard  →  http://<SERVER_IP>:3000
+  app:
+    build:
+      context: .
+      args:
+        VITE_EVENT_TITLE: ${EVENT_TITLE:-LAN-PARTY CHALLENGE}
+    image: lan-party-tracker-app
+    container_name: lan-party-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - lanparty-data:/data
+
+  # Expo-Dev-Server für die Handy-App  →  in Expo Go: exp://<SERVER_IP>:8081
+  expo:
+    build:
+      context: ./mobile
+    image: lan-party-tracker-expo
+    container_name: lan-party-expo
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      EXPO_PUBLIC_SERVER_IP: ${SERVER_IP:-10.0.0.210}
+      EXPO_PUBLIC_SERVER_PORT: ${APP_PORT:-3000}
+      # Damit Expo Go die Server-IP statt der internen Container-IP bekommt
+      REACT_NATIVE_PACKAGER_HOSTNAME: ${SERVER_IP:-10.0.0.210}
+      TZ: ${TZ:-Europe/Berlin}
+      # Ohne Internet auf der Party die nächste Zeile einkommentieren:
+      # EXPO_OFFLINE: "1"
+    depends_on:
+      - app
+
+volumes:
+  # Die SQLite-Datenbank (lanparty.db) – überlebt Neustarts und Updates
+  lanparty-data:

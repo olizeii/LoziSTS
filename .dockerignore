@@ -1,0 +1,10 @@
+.git
+.claude
+**/node_modules
+**/.env
+**/.env.local
+**/*.log
+
+backend/data
+dashboard/dist
+mobile

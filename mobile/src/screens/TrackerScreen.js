@@ -1,18 +1,49 @@
 import * as Haptics from 'expo-haptics';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChallengeButton } from '../components/ChallengeButton';
 import { ConnectionBadge } from '../components/ConnectionBadge';
+import { formatNumber } from '../components/DartsWidgets';
 import { Toast } from '../components/Toast';
 import { SERVER_ADDRESS } from '../config';
-import { COLORS, FONTS } from '../theme';
+import { COLORS, DARTS_COLOR, FONTS } from '../theme';
 
 function haptic(fn) {
   fn().catch(() => {});
 }
 
-export function TrackerScreen({ name, tracker, onChangeName }) {
+// Einstieg in den Dart-Tracker: Team-Countdown + eigene Punkte
+function DartsCard({ state, name, onPress }) {
+  const darts = state.darts;
+  const challenge = state.challenges.find((c) => c.kind === 'darts');
+  if (!darts || !challenge) return null;
+  const me = darts.players.find((p) => p.name === name);
+  const liveGames = darts.activeGames.length;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.dartsCard, pressed && styles.dartsCardPressed]}>
+      <Text style={styles.dartsEmoji}>🎯</Text>
+      <View style={styles.dartsMiddle}>
+        <Text style={styles.dartsLabel}>DARTS · {formatNumber(challenge.goal)}</Text>
+        <View style={styles.dartsTrack}>
+          <View style={[styles.dartsFill, { width: `${Math.min(challenge.percent, 100)}%` }]} />
+        </View>
+        <Text style={styles.dartsInfo} numberOfLines={1}>
+          noch <Text style={styles.dartsStrong}>{formatNumber(darts.remaining)}</Text>
+          {liveGames ? ` · ${liveGames} Spiel${liveGames > 1 ? 'e' : ''} live` : ''}
+        </Text>
+        <Text style={styles.dartsMine} numberOfLines={1}>
+          {me ? `Du: ${formatNumber(me.points)} Pkt · Ø ${formatNumber(me.average)}` : 'Du: noch kein Dart geworfen'}
+        </Text>
+      </View>
+      <View style={styles.dartsChip}>
+        <Text style={styles.dartsChipText}>ÖFFNEN ›</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+export function TrackerScreen({ name, tracker, onChangeName, onOpenDarts }) {
   const { state, status, lastError, tick, undo } = tracker;
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState(null);
@@ -113,17 +144,20 @@ export function TrackerScreen({ name, tracker, onChangeName }) {
       )}
 
       {state ? (
-        <View style={styles.buttons}>
-          {state.challenges.map((challenge) => (
-            <ChallengeButton
-              key={challenge.id}
-              challenge={challenge}
-              myEntry={state.leaderboards[challenge.id]?.find((e) => e.name === name)}
-              disabled={!connected}
-              onTick={handleTick}
-            />
-          ))}
-        </View>
+        <ScrollView contentContainerStyle={styles.buttons}>
+          {state.challenges
+            .filter((challenge) => challenge.kind === 'tick')
+            .map((challenge) => (
+              <ChallengeButton
+                key={challenge.id}
+                challenge={challenge}
+                myEntry={state.leaderboards[challenge.id]?.find((e) => e.name === name)}
+                disabled={!connected}
+                onTick={handleTick}
+              />
+            ))}
+          <DartsCard state={state} name={name} onPress={onOpenDarts} />
+        </ScrollView>
       ) : (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={COLORS.accent} />
@@ -181,7 +215,42 @@ const styles = StyleSheet.create({
   },
   offlineText: { color: COLORS.text, fontSize: 14, fontWeight: '700', textAlign: 'center' },
   offlineDetail: { color: COLORS.muted, fontSize: 11, textAlign: 'center', marginTop: 4 },
-  buttons: { flex: 1, paddingHorizontal: 16, gap: 14 },
+  buttons: { paddingHorizontal: 16, paddingBottom: 8, gap: 12 },
+  dartsCard: {
+    height: 118,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: DARTS_COLOR,
+    backgroundColor: COLORS.panel,
+    shadowColor: DARTS_COLOR,
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
+  },
+  dartsCardPressed: { transform: [{ scale: 0.97 }] },
+  dartsEmoji: { fontSize: 38 },
+  dartsMiddle: { flex: 1, gap: 5 },
+  dartsLabel: { fontFamily: FONTS.display, fontSize: 15, color: COLORS.text, letterSpacing: 0.5 },
+  dartsTrack: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.08)', overflow: 'hidden' },
+  dartsFill: { height: '100%', borderRadius: 4, backgroundColor: DARTS_COLOR },
+  dartsInfo: { color: COLORS.muted, fontSize: 13, fontWeight: '600' },
+  dartsStrong: { color: DARTS_COLOR, fontWeight: '800', fontSize: 14 },
+  dartsMine: { color: COLORS.text, fontSize: 13, fontWeight: '700', opacity: 0.85 },
+  dartsChip: {
+    minWidth: 76,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: DARTS_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  dartsChipText: { fontFamily: FONTS.display, fontSize: 13, color: '#000' },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { color: COLORS.muted, fontSize: 15 },
   footer: { paddingHorizontal: 16, paddingTop: 12, gap: 8 },

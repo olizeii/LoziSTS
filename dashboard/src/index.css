@@ -298,6 +298,27 @@ body {
   }
 }
 
+/* ---------- Darts ---------- */
+
+.dart-board-bg {
+  background:
+    radial-gradient(circle, var(--c) 0 4%, transparent 4.5% 8%, var(--c) 8.5% 10%, transparent 10.5% 58%, var(--c) 58.5% 62%, transparent 62.5% 92%, var(--c) 92.5% 97%, transparent 97.5%),
+    repeating-conic-gradient(from 9deg, rgba(255, 255, 255, 0.9) 0 18deg, transparent 18deg 36deg);
+  animation: board-spin 60s linear infinite;
+}
+
+@keyframes board-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.game-current {
+  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  box-shadow: inset 0 0 0 1px var(--c);
+}
+
 /* ---------- Leaderboard ---------- */
 
 .lb-row {

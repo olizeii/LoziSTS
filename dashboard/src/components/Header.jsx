@@ -21,7 +21,7 @@ export function Header({ state, connected, muted, onToggleMute }) {
             {EVENT_TITLE}
           </h1>
           <p className="mt-[0.6vh] text-[1.9vh] font-semibold tracking-[0.35em] text-muted uppercase">
-            Gemeinsam knacken wir alle 4 Challenges
+            Gemeinsam knacken wir alle {state?.challenges.length ?? ''} Challenges
           </p>
         </div>
       </div>

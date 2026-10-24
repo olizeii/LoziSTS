@@ -173,8 +173,52 @@ function complete() {
   return normalize(buf, 0.9);
 }
 
+// Darts: Bust – "Sad Trombone"
+function bust() {
+  const buf = createBuffer(1.8);
+  const notes = [NOTE.G4, NOTE.G4 * 0.944, NOTE.G4 * 0.891];
+  notes.forEach((f, i) => {
+    addNote(buf, i * 0.32, 0.26, f, { type: 'saw', volume: 0.22, vibrato: 0.01, release: 0.06 });
+    addNote(buf, i * 0.32, 0.26, f / 2, { type: 'triangle', volume: 0.3, release: 0.06 });
+  });
+  addNote(buf, 0.96, 0.6, NOTE.G4 * 0.841, { type: 'saw', volume: 0.22, vibrato: 0.03, vibratoRate: 7, release: 0.2 });
+  addNote(buf, 0.96, 0.6, (NOTE.G4 * 0.841) / 2, { type: 'triangle', volume: 0.3, vibrato: 0.03, vibratoRate: 7, release: 0.2 });
+  return normalize(buf, 0.75);
+}
+
+// Darts: 180 – Sirene + Power-Akkord
+function oneEighty() {
+  const buf = createBuffer(3.2);
+  addNote(buf, 0, 0.5, NOTE.C4, { type: 'saw', volume: 0.2, slideTo: NOTE.C6, release: 0.02 });
+  addNote(buf, 0.5, 0.5, NOTE.C4, { type: 'saw', volume: 0.2, slideTo: NOTE.C6, release: 0.02 });
+  const t = 1.05;
+  for (const f of [NOTE.C5, NOTE.G5, NOTE.C6, NOTE.E6]) {
+    addNote(buf, t, 1.3, f, { type: 'pulse', volume: 0.12, vibrato: 0.012, vibratoRate: 6, release: 0.7 });
+  }
+  addNote(buf, t, 1.4, NOTE.C3, { type: 'saw', volume: 0.25, release: 0.6 });
+  addNoise(buf, t, 0.35, 0.4);
+  addNoise(buf, t + 0.45, 0.2, 0.25);
+  addEcho(buf, 0.18, 0.35);
+  return normalize(buf, 0.9);
+}
+
+// Darts: Checkout – kurze Sieger-Fanfare
+function checkout() {
+  const buf = createBuffer(2.4);
+  addNote(buf, 0, 0.1, NOTE.G5, { type: 'square', volume: 0.24 });
+  addNote(buf, 0.13, 0.1, NOTE.G5, { type: 'square', volume: 0.24 });
+  addNote(buf, 0.26, 0.1, NOTE.G5, { type: 'square', volume: 0.24 });
+  for (const f of [NOTE.C6, NOTE.E6, NOTE.G6]) {
+    addNote(buf, 0.42, 0.9, f, { type: 'pulse', volume: 0.13, vibrato: 0.008, release: 0.5 });
+  }
+  addNote(buf, 0.42, 1.0, NOTE.C4, { type: 'triangle', volume: 0.4, release: 0.4 });
+  addNoise(buf, 0.42, 0.2, 0.3);
+  addEcho(buf, 0.15, 0.3);
+  return normalize(buf, 0.85);
+}
+
 fs.mkdirSync(OUT_DIR, { recursive: true });
-const sounds = { tick, undo, milestone, complete };
+const sounds = { tick, undo, milestone, complete, bust, oneEighty, checkout };
 for (const [name, build] of Object.entries(sounds)) {
   const file = path.join(OUT_DIR, `${name}.wav`);
   writeWav(file, build());

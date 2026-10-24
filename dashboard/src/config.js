@@ -12,7 +12,9 @@ export const CHALLENGE_THEME = {
   rubiks: { color: '#22d3ee', color2: '#3b82f6', glow: 'rgba(34, 211, 238, 0.55)' },
   pushups: { color: '#fb923c', color2: '#ef4444', glow: 'rgba(249, 115, 22, 0.55)' },
   running: { color: '#a3e635', color2: '#10b981', glow: 'rgba(132, 204, 22, 0.55)' },
-  funnel: { color: '#facc15', color2: '#f59e0b', glow: 'rgba(250, 204, 21, 0.55)' },
+  funnel: { color: '#c084fc', color2: '#8b5cf6', glow: 'rgba(168, 85, 247, 0.55)' },
+  beer: { color: '#facc15', color2: '#f59e0b', glow: 'rgba(250, 204, 21, 0.55)' },
+  darts: { color: '#fb7185', color2: '#e11d48', glow: 'rgba(244, 63, 94, 0.6)' },
 };
 
 const FALLBACK_THEME = { color: '#a855f7', color2: '#ec4899', glow: 'rgba(168, 85, 247, 0.55)' };

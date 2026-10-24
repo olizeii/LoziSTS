@@ -5,9 +5,13 @@ import { io } from 'socket.io-client';
 
 const url = process.argv[2] || process.env.SERVER_URL || 'http://localhost:3000';
 const NAME = 'Smoke-Test';
-const CHALLENGE_IDS = ['rubiks', 'pushups', 'running', 'funnel'];
+const CHALLENGE_IDS = ['rubiks', 'pushups', 'running', 'funnel', 'beer'];
 
-function emitWithAck(socket, event, payload) {
+// kleine Pause pro Aktion, damit der Spam-Schutz (10 Aktionen/Sekunde) nicht greift
+const PACE_MS = 120;
+
+async function emitWithAck(socket, event, payload) {
+  await new Promise((resolve) => setTimeout(resolve, PACE_MS));
   return new Promise((resolve, reject) => {
     socket.timeout(5000).emit(event, payload, (err, res) => (err ? reject(err) : resolve(res)));
   });
@@ -43,11 +47,26 @@ socket.once('state', async (initial) => {
     console.log(`✅ Undo:  ${res.event.message}`);
   }
 
+  const dart = await emitWithAck(socket, 'darts:turn', {
+    name: NAME,
+    darts: [
+      { segment: 20, multiplier: 3 },
+      { segment: 19, multiplier: 3 },
+      { segment: 25, multiplier: 2 },
+    ],
+  });
+  if (!dart.ok || dart.turn.raw !== 167) fail(`Dart-Aufnahme fehlgeschlagen: ${dart.error ?? dart.turn.raw}`);
+  console.log(`✅ Darts: ${dart.event.message}`);
+  const dartUndo = await emitWithAck(socket, 'darts:undo', { name: NAME });
+  if (!dartUndo.ok) fail(`Dart-Undo fehlgeschlagen: ${dartUndo.error}`);
+  console.log(`✅ Darts: ${dartUndo.event.message}`);
+
   const { state } = await emitWithAck(socket, 'state:get');
   for (const c of state.challenges) {
     if (c.total !== before[c.id]) fail(`${c.id}: Summe ${c.total} statt ${before[c.id]}`);
   }
-  if (broadcasts.length !== CHALLENGE_IDS.length) fail(`Erwartet ${CHALLENGE_IDS.length} Broadcasts, bekommen ${broadcasts.length}`);
+  const expectedBroadcasts = CHALLENGE_IDS.length + 1;
+  if (broadcasts.length !== expectedBroadcasts) fail(`Erwartet ${expectedBroadcasts} Broadcasts, bekommen ${broadcasts.length}`);
 
   console.log(`✅ ${broadcasts.length} Broadcasts empfangen, Summen wieder auf Ausgangswert`);
   console.log('\nAktueller Stand:');

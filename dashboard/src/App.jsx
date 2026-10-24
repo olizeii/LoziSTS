@@ -1,22 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { CelebrationOverlay } from './components/CelebrationOverlay.jsx';
 import { ChallengeBar } from './components/ChallengeBar.jsx';
+import { DartsPanel } from './components/DartsPanel.jsx';
 import { Header } from './components/Header.jsx';
 import { Leaderboard } from './components/Leaderboard.jsx';
-import { MilestoneOverlay } from './components/MilestoneOverlay.jsx';
 import { StartOverlay } from './components/StartOverlay.jsx';
 import { Ticker } from './components/Ticker.jsx';
 import { AUTOSTART, SERVER_URL, themeFor } from './config.js';
 import { useIdleCursor } from './hooks/useIdleCursor.js';
+import { dartsLabel } from './lib/darts.js';
 import { tickBurst } from './lib/effects.js';
 import { sound } from './lib/sound.js';
 import { useTracker } from './lib/useTracker.js';
 
 const POP_MS = 1800;
 const TEST_MILESTONES = [25, 50, 75, 100];
+const T20 = { segment: 20, multiplier: 3, points: 60 };
 
 function toggleFullscreen() {
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   else document.documentElement.requestFullscreen?.().catch(() => {});
+}
+
+function randomTestDart() {
+  const segment = 1 + Math.floor(Math.random() * 20);
+  const multiplier = 1 + Math.floor(Math.random() * 3);
+  return { segment, multiplier, points: segment * multiplier };
 }
 
 export default function App() {
@@ -25,7 +34,7 @@ export default function App() {
   const [pops, setPops] = useState([]);
   const [flashes, setFlashes] = useState({});
   const [hot, setHot] = useState({});
-  const [milestoneQueue, setMilestoneQueue] = useState([]);
+  const [celebrations, setCelebrations] = useState([]);
   const barRefs = useRef({});
   const tickerRef = useRef(null);
   const seqRef = useRef(0);
@@ -39,33 +48,50 @@ export default function App() {
     return seqRef.current;
   };
 
-  const celebrateEvent = useCallback((event) => {
-    const key = nextKey();
-    const { challengeId } = event;
-
-    setFlashes((prev) => ({ ...prev, [challengeId]: { key } }));
-    setPops((prev) => [...prev, { id: key, challengeId, amount: event.amount, name: event.name }]);
-    setTimeout(() => setPops((prev) => prev.filter((p) => p.id !== key)), POP_MS);
-    tickerRef.current?.push(event);
-
-    if (event.type === 'undo') {
-      sound.play('undo');
-      return;
-    }
-    setHot((prev) => ({ ...prev, [challengeId]: { name: event.name, key } }));
-    sound.play('tick');
-    // kurz warten, bis der Balken angewachsen ist, dann am Balkenende Konfetti schießen
-    setTimeout(() => tickBurst(barRefs.current[challengeId], themeFor(challengeId).color), 280);
+  const queueCelebrations = useCallback((items) => {
+    if (items.length) setCelebrations((prev) => [...prev, ...items.map((item) => ({ ...item, key: nextKey() }))]);
   }, []);
+
+  const celebrateEvent = useCallback(
+    (event) => {
+      const key = nextKey();
+      const { challengeId, dart } = event;
+      const bust = Boolean(dart?.bust);
+
+      setFlashes((prev) => ({ ...prev, [challengeId]: { key } }));
+      setPops((prev) => [...prev, { id: key, challengeId, amount: event.amount, name: event.name, bust }]);
+      setTimeout(() => setPops((prev) => prev.filter((p) => p.id !== key)), POP_MS);
+      tickerRef.current?.push(event);
+
+      if (event.type === 'undo') {
+        sound.play('undo');
+        return;
+      }
+      if (bust) {
+        sound.play('bust');
+        return;
+      }
+      setHot((prev) => ({ ...prev, [challengeId]: { name: event.name, key } }));
+      sound.play('tick');
+      // kurz warten, bis der Balken angewachsen ist, dann am Balkenende Konfetti schießen
+      setTimeout(() => tickBurst(barRefs.current[challengeId], themeFor(challengeId).color), 280);
+
+      if (dart?.raw === 180) queueCelebrations([{ kind: 'oneEighty', name: event.name }]);
+      if (dart?.checkout) {
+        queueCelebrations([
+          { kind: 'checkout', name: event.name, startScore: dart.startScore, label: dartsLabel(dart.darts), raw: dart.raw },
+        ]);
+      }
+    },
+    [queueCelebrations],
+  );
 
   const handleTick = useCallback(
     ({ event, milestones }) => {
       celebrateEvent(event);
-      if (milestones?.length) {
-        setMilestoneQueue((prev) => [...prev, ...milestones.map((m) => ({ ...m, key: nextKey() }))]);
-      }
+      queueCelebrations((milestones ?? []).map((m) => ({ ...m, kind: 'milestone' })));
     },
-    [celebrateEvent],
+    [celebrateEvent, queueCelebrations],
   );
 
   const handleUndo = useCallback(({ event }) => celebrateEvent(event), [celebrateEvent]);
@@ -73,30 +99,41 @@ export default function App() {
   const { state, connected } = useTracker({ onTick: handleTick, onUndo: handleUndo });
   stateRef.current = state;
 
-  // Lokaler Effekt-Test (wird NICHT gespeichert) – praktisch, um Sound & Konfetti am TV zu prüfen
+  // Lokale Effekt-Tests (werden NICHT gespeichert) – praktisch, um Sound & Konfetti am TV zu prüfen
   const runTest = useCallback(
-    (withMilestone) => {
+    (type) => {
       const current = stateRef.current;
       if (!current) return;
-      const challenge = current.challenges[Math.floor(Math.random() * current.challenges.length)];
+      const tickChallenges = current.challenges.filter((c) => c.kind === 'tick');
+      const base = { id: `test-${nextKey()}`, type: 'tick', name: 'TV-Test', createdAt: new Date().toISOString() };
+
+      if (type === 'darts' || type === '180' || type === 'checkout') {
+        const darts = type === '180' ? [T20, T20, T20] : type === 'checkout' ? [T20, { segment: 16, multiplier: 2, points: 32 }] : [randomTestDart(), randomTestDart(), randomTestDart()];
+        const raw = darts.reduce((sum, d) => sum + d.points, 0);
+        handleTick({
+          event: {
+            ...base,
+            challengeId: 'darts',
+            amount: raw,
+            dart: { darts, raw, bust: false, checkout: type === 'checkout', startScore: 501 },
+            message: `🧪 Test: 🎯 ${dartsLabel(darts)} = ${raw} (nur lokal, nicht gespeichert)`,
+          },
+          milestones: [],
+        });
+        return;
+      }
+
+      const challenge = tickChallenges[Math.floor(Math.random() * tickChallenges.length)];
       const event = {
-        id: `test-${nextKey()}`,
-        type: 'tick',
-        name: 'TV-Test',
+        ...base,
         challengeId: challenge.id,
         amount: challenge.increment,
-        createdAt: new Date().toISOString(),
         message: `🧪 Test: ${challenge.emoji} ${challenge.label} +${challenge.increment} (nur lokal, nicht gespeichert)`,
       };
-      const milestones = withMilestone
-        ? [
-            {
-              challengeId: challenge.id,
-              percent: TEST_MILESTONES[Math.floor(Math.random() * TEST_MILESTONES.length)],
-              name: 'TV-Test',
-            },
-          ]
-        : [];
+      const milestones =
+        type === 'milestone'
+          ? [{ challengeId: challenge.id, percent: TEST_MILESTONES[Math.floor(Math.random() * TEST_MILESTONES.length)], name: 'TV-Test' }]
+          : [];
       handleTick({ event, milestones });
     },
     [handleTick],
@@ -122,17 +159,22 @@ export default function App() {
       }
       if (key === 'f') toggleFullscreen();
       else if (key === 'm') sound.toggleMuted();
-      else if (key === 't') runTest(e.shiftKey);
+      else if (key === 't') runTest(e.shiftKey ? 'milestone' : 'tick');
+      else if (key === 'd') runTest(e.shiftKey ? '180' : 'darts');
+      else if (key === 'c') runTest('checkout');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [started, start, runTest]);
 
-  const dismissMilestone = useCallback(() => setMilestoneQueue((prev) => prev.slice(1)), []);
-  const currentMilestone = milestoneQueue[0] ?? null;
-  const milestoneChallenge = currentMilestone
-    ? state?.challenges.find((c) => c.id === currentMilestone.challengeId)
-    : null;
+  const dismissCelebration = useCallback(() => setCelebrations((prev) => prev.slice(1)), []);
+
+  const tickChallenges = state?.challenges.filter((c) => c.kind === 'tick') ?? [];
+  const dartsChallenge = state?.challenges.find((c) => c.kind === 'darts');
+  const dartStatsByName = new Map((state?.darts?.players ?? []).map((p) => [p.name, p]));
+  const fillRef = (id) => (el) => {
+    barRefs.current[id] = el;
+  };
 
   return (
     <div className="relative flex h-full flex-col">
@@ -144,28 +186,50 @@ export default function App() {
         <Header state={state} connected={connected} muted={muted} onToggleMute={() => sound.toggleMuted()} />
 
         {state ? (
-          <main className="grid min-h-0 flex-1 grid-cols-[1.45fr_1fr] gap-[1.4vw] px-[2.2vw] py-[2vh]">
-            <section className="grid min-h-0 grid-rows-4 gap-[1.8vh]">
-              {state.challenges.map((challenge) => (
-                <ChallengeBar
-                  key={challenge.id}
-                  challenge={challenge}
+          <main className="grid min-h-0 flex-1 grid-rows-[minmax(0,1.6fr)_minmax(0,1fr)] gap-[1.6vh] px-[2.2vw] py-[1.8vh]">
+            <div className="grid min-h-0 grid-cols-[1.3fr_1fr] gap-[1.2vw]">
+              <section className="grid min-h-0 gap-[1.1vh]" style={{ gridTemplateRows: `repeat(${tickChallenges.length}, minmax(0, 1fr))` }}>
+                {tickChallenges.map((challenge) => (
+                  <ChallengeBar
+                    key={challenge.id}
+                    challenge={challenge}
+                    milestoneSteps={state.milestoneSteps}
+                    pops={pops.filter((p) => p.challengeId === challenge.id)}
+                    flash={flashes[challenge.id]}
+                    fillRef={fillRef(challenge.id)}
+                  />
+                ))}
+              </section>
+              {dartsChallenge && (
+                <DartsPanel
+                  challenge={dartsChallenge}
+                  darts={state.darts}
+                  recentEvents={state.recentEvents}
                   milestoneSteps={state.milestoneSteps}
-                  pops={pops.filter((p) => p.challengeId === challenge.id)}
-                  flash={flashes[challenge.id]}
-                  fillRef={(el) => {
-                    barRefs.current[challenge.id] = el;
-                  }}
+                  pops={pops.filter((p) => p.challengeId === dartsChallenge.id)}
+                  flash={flashes[dartsChallenge.id]}
+                  fillRef={fillRef(dartsChallenge.id)}
                 />
-              ))}
-            </section>
-            <section className="grid min-h-0 grid-cols-2 grid-rows-2 gap-x-[1.1vw] gap-y-[1.8vh]">
+              )}
+            </div>
+            <section
+              className="grid min-h-0 gap-x-[0.8vw]"
+              style={{ gridTemplateColumns: `repeat(${state.challenges.length}, minmax(0, 1fr))` }}
+            >
               {state.challenges.map((challenge) => (
                 <Leaderboard
                   key={challenge.id}
                   challenge={challenge}
                   entries={state.leaderboards[challenge.id] ?? []}
                   hot={hot[challenge.id]}
+                  subtitleFor={
+                    challenge.kind === 'darts'
+                      ? (entry) => {
+                          const s = dartStatsByName.get(entry.name);
+                          return s ? `Ø ${s.average.toLocaleString('de-DE')} · ${s.count180}× 180 · ${s.gamesWon} Siege` : null;
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </section>
@@ -190,7 +254,7 @@ export default function App() {
 
       <div className="scanlines" />
 
-      <MilestoneOverlay milestone={currentMilestone} challenge={milestoneChallenge} onDone={dismissMilestone} />
+      <CelebrationOverlay item={celebrations[0] ?? null} challenges={state?.challenges} onDone={dismissCelebration} />
 
       {!started && <StartOverlay connected={connected} onStart={start} />}
     </div>

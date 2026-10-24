@@ -1,16 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { io } from 'socket.io-client';
 import { SERVER_URL } from './config';
 
 const ACK_TIMEOUT_MS = 6000;
 
-// Socket.io-Verbindung zum Backend + aktueller Server-State
+// Socket.io-Verbindung zum Backend + aktueller Server-State + Dart-Spielstände
 export function useTracker() {
   const [state, setState] = useState(null);
+  const [games, setGames] = useState({});
   const [status, setStatus] = useState('connecting'); // 'connected' | 'connecting' | 'offline'
   const [lastError, setLastError] = useState(null);
   const socketRef = useRef(null);
+
+  const storeGame = useCallback((game) => {
+    if (game) setGames((prev) => ({ ...prev, [game.id]: game }));
+  }, []);
 
   useEffect(() => {
     if (!SERVER_URL) return undefined;
@@ -24,6 +29,18 @@ export function useTracker() {
     });
     socketRef.current = socket;
 
+    const applyState = (next) => {
+      setState(next);
+      const active = next?.darts?.activeGames ?? [];
+      if (active.length) {
+        setGames((prev) => {
+          const merged = { ...prev };
+          for (const game of active) merged[game.id] = game;
+          return merged;
+        });
+      }
+    };
+
     socket.on('connect', () => {
       setStatus('connected');
       setLastError(null);
@@ -33,9 +50,10 @@ export function useTracker() {
       setStatus('offline');
       setLastError(err.message);
     });
-    socket.on('state', (next) => setState(next));
-    socket.on('tick', (payload) => setState(payload.state));
-    socket.on('undo', (payload) => setState(payload.state));
+    socket.on('state', applyState);
+    socket.on('tick', (payload) => applyState(payload.state));
+    socket.on('undo', (payload) => applyState(payload.state));
+    socket.on('darts:game', storeGame);
 
     // Nach dem Aufwecken des Handys sofort neu verbinden statt auf den Backoff zu warten
     const subscription = AppState.addEventListener('change', (appState) => {
@@ -48,7 +66,7 @@ export function useTracker() {
       socket.close();
       socketRef.current = null;
     };
-  }, []);
+  }, [storeGame]);
 
   const emit = useCallback(async (event, payload) => {
     const socket = socketRef.current;
@@ -60,8 +78,32 @@ export function useTracker() {
     }
   }, []);
 
+  // Ergebnis mit Spielstand gleich lokal übernehmen (nicht auf den Broadcast warten)
+  const emitGame = useCallback(
+    async (event, payload) => {
+      const res = await emit(event, payload);
+      if (res.ok) storeGame(res.game);
+      return res;
+    },
+    [emit, storeGame],
+  );
+
   const tick = useCallback((name, challengeId) => emit('tick', { name, challengeId }), [emit]);
   const undo = useCallback((name) => emit('undo', { name }), [emit]);
 
-  return { state, status, lastError, tick, undo };
+  const darts = useMemo(
+    () => ({
+      submitTurn: (name, { gameId = null, player = null, darts: thrown }) =>
+        emitGame('darts:turn', { name, gameId, player, darts: thrown }),
+      undoTurn: (name, gameId = null) => emitGame('darts:undo', { name, gameId }),
+      createGame: (name, { players, startScore, doubleOut }) =>
+        emitGame('darts:createGame', { name, players, startScore, doubleOut }),
+      abortGame: (name, gameId) => emitGame('darts:abortGame', { name, gameId }),
+      fetchGame: (gameId) => emitGame('darts:game', { gameId }),
+      fetchHistory: (name) => emit('darts:history', { name }),
+    }),
+    [emit, emitGame],
+  );
+
+  return { state, games, status, lastError, tick, undo, darts };
 }

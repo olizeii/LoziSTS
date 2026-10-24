@@ -1,6 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 import { COLORS } from '../theme';
+
+// [toast, showToast(message, tone)] – zusammen mit <Toast key={toast?.key} toast={toast} /> verwenden
+export function useToast() {
+  const [toast, setToast] = useState(null);
+  const seq = useRef(0);
+  const show = useCallback((message, tone = 'info') => {
+    seq.current += 1;
+    setToast({ key: seq.current, message, tone });
+  }, []);
+  return [toast, show];
+}
 
 const TONES = {
   success: { border: COLORS.success, bg: '#062a1f' },

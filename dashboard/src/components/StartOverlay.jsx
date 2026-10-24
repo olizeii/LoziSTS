@@ -28,7 +28,7 @@ export function StartOverlay({ connected, onStart }) {
           Klicken oder <kbd className="rounded border border-white/30 px-[0.4vw]">Enter</kbd> – aktiviert Sound & Vollbild
         </p>
         <p className="text-[1.8vh] font-semibold tracking-wider text-white/40">
-          F = Vollbild · M = Ton an/aus · T = Tick-Effekt testen · Shift+T = Meilenstein testen
+          F = Vollbild · M = Ton an/aus · Tests (nur lokal): T = Tick · Shift+T = Meilenstein · D = Dart · Shift+D = 180 · C = Checkout
         </p>
         <p className={`text-[1.8vh] font-bold tracking-widest ${connected ? 'text-emerald-400' : 'text-rose-400'}`}>
           {connected ? '● Server verbunden' : '● Verbinde mit Server…'}

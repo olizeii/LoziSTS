@@ -139,7 +139,7 @@ function FloatingPop({ text, color, onDone }) {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1 },
+  wrapper: { height: 104 },
   button: {
     flex: 1,
     flexDirection: 'row',

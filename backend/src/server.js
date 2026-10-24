@@ -72,6 +72,64 @@ async function handleUndo(rawName, challengeId) {
   return { event: result.event, state };
 }
 
+function requireName(raw) {
+  const name = cleanName(raw);
+  if (!name) throw new Error(`Ungültiger Name (1–${MAX_NAME_LENGTH} Zeichen)`);
+  return name;
+}
+
+async function handleDartTurn(payload) {
+  const enteredBy = requireName(payload.name);
+  const player = payload.player ? requireName(payload.player) : null;
+  const { event, milestones, turn, game } = await store.addDartTurn({
+    enteredBy,
+    gameId: payload.gameId ?? null,
+    player,
+    darts: payload.darts,
+  });
+  const state = await store.getState();
+  io.emit('tick', { event, milestones, state });
+  if (game) io.emit('darts:game', game);
+  console.log(`[darts] ${event.message}${game ? ` (Spiel #${game.id})` : ''}`);
+  for (const m of milestones) console.log(`[milestone] ${m.message}`);
+  return { event, milestones, turn, game };
+}
+
+async function handleDartUndo(payload) {
+  const requester = requireName(payload.name);
+  const { event, game } = await store.undoDartTurn({ requester, gameId: payload.gameId ?? null });
+  const state = await store.getState();
+  io.emit('undo', { event, state });
+  if (game) io.emit('darts:game', game);
+  console.log(`[darts] ${event.message}`);
+  return { event, game };
+}
+
+async function handleCreateGame(payload) {
+  const createdBy = requireName(payload.name);
+  if (!Array.isArray(payload.players)) throw new Error('Spielerliste fehlt');
+  const players = payload.players.map(requireName);
+  const game = await store.createDartGame({
+    createdBy,
+    players,
+    startScore: payload.startScore,
+    doubleOut: payload.doubleOut !== false,
+  });
+  io.emit('state', await store.getState());
+  io.emit('darts:game', game);
+  console.log(`[darts] Neues ${game.startScore}er-Spiel #${game.id}: ${players.join(' vs. ')}`);
+  return { game };
+}
+
+async function handleAbortGame(payload) {
+  const name = requireName(payload.name);
+  const game = await store.abortDartGame({ gameId: payload.gameId });
+  io.emit('state', await store.getState());
+  io.emit('darts:game', game);
+  console.log(`[darts] Spiel #${game.id} abgebrochen von ${name}`);
+  return { game };
+}
+
 // --- REST API -------------------------------------------------------------------
 
 const api = express.Router();
@@ -195,6 +253,26 @@ io.on('connection', async (socket) => {
       reply({ ok: false, error: err.message });
     }
   });
+
+  // Dart-Aktionen: Antwort per Ack { ok: true, ...ergebnis } bzw. { ok: false, error }
+  function onAction(eventName, handler, { limited = true } = {}) {
+    socket.on(eventName, async (payload, ack) => {
+      const reply = respond(ack);
+      if (limited && rateLimited()) return reply({ ok: false, error: 'Langsam! Zu viele Aktionen pro Sekunde.' });
+      try {
+        reply({ ok: true, ...(await handler(payload ?? {})) });
+      } catch (err) {
+        reply({ ok: false, error: err.message });
+      }
+    });
+  }
+
+  onAction('darts:turn', handleDartTurn);
+  onAction('darts:undo', handleDartUndo);
+  onAction('darts:createGame', handleCreateGame);
+  onAction('darts:abortGame', handleAbortGame);
+  onAction('darts:game', async (payload) => ({ game: await store.getDartGame(payload.gameId) }), { limited: false });
+  onAction('darts:history', async (payload) => store.getDartHistory(requireName(payload.name)), { limited: false });
 
   // Akzeptiert sowohl emit('state:get', ack) als auch emit('state:get', payload, ack)
   socket.on('state:get', async (...args) => {

@@ -1,21 +1,31 @@
 import { Orbitron_700Bold, Orbitron_900Black, useFonts } from '@expo-google-fonts/orbitron';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SERVER_URL } from './src/config';
+import { DartFreeScreen } from './src/screens/DartFreeScreen';
+import { DartGameScreen } from './src/screens/DartGameScreen';
+import { DartHistoryScreen } from './src/screens/DartHistoryScreen';
+import { DartNewGameScreen } from './src/screens/DartNewGameScreen';
+import { DartsHomeScreen } from './src/screens/DartsHomeScreen';
 import { NameScreen } from './src/screens/NameScreen';
 import { TrackerScreen } from './src/screens/TrackerScreen';
 import { clearName, loadName, saveName } from './src/storage';
 import { COLORS } from './src/theme';
 import { useTracker } from './src/useTracker';
 
+const HOME = { name: 'home', params: {} };
+
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({ Orbitron_700Bold, Orbitron_900Black });
   // undefined = wird geladen, null = noch kein Name gespeichert
   const [name, setName] = useState(undefined);
   const [previousName, setPreviousName] = useState('');
+  // Einfacher Navigations-Stack: [{ name, params }]
+  const [stack, setStack] = useState([HOME]);
   const tracker = useTracker();
+  const route = stack[stack.length - 1];
 
   useEffect(() => {
     loadName()
@@ -23,9 +33,29 @@ export default function App() {
       .catch(() => setName(null));
   }, []);
 
+  const navigate = useCallback((screen, params = {}) => setStack((prev) => [...prev, { name: screen, params }]), []);
+  const replace = useCallback(
+    (screen, params = {}) => setStack((prev) => [...prev.slice(0, -1), { name: screen, params }]),
+    [],
+  );
+  const goBack = useCallback(() => setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev)), []);
+
+  // Android-Zurück-Taste
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (stack.length > 1) {
+        goBack();
+        return true;
+      }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [stack.length, goBack]);
+
   const handleSave = useCallback(async (newName) => {
     await saveName(newName);
     setName(newName);
+    setStack([HOME]);
   }, []);
 
   const handleChangeName = useCallback(async () => {
@@ -33,6 +63,8 @@ export default function App() {
     await clearName();
     setName(null);
   }, [name]);
+
+  const screenProps = { name, tracker, navigate, replace, goBack };
 
   let content;
   if (!SERVER_URL) {
@@ -54,8 +86,25 @@ export default function App() {
     content = (
       <NameScreen initialName={previousName} status={tracker.status} state={tracker.state} onSave={handleSave} />
     );
+  } else if (route.name === 'darts') {
+    content = <DartsHomeScreen {...screenProps} />;
+  } else if (route.name === 'dartFree') {
+    content = <DartFreeScreen {...screenProps} />;
+  } else if (route.name === 'dartNewGame') {
+    content = <DartNewGameScreen {...screenProps} />;
+  } else if (route.name === 'dartGame') {
+    content = <DartGameScreen key={route.params.gameId} {...screenProps} gameId={route.params.gameId} />;
+  } else if (route.name === 'dartHistory') {
+    content = <DartHistoryScreen {...screenProps} />;
   } else {
-    content = <TrackerScreen name={name} tracker={tracker} onChangeName={handleChangeName} />;
+    content = (
+      <TrackerScreen
+        name={name}
+        tracker={tracker}
+        onChangeName={handleChangeName}
+        onOpenDarts={() => navigate('darts')}
+      />
+    );
   }
 
   return (

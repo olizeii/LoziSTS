@@ -3,12 +3,23 @@ import path from 'node:path';
 import sqlite3 from 'sqlite3';
 import {
   CHALLENGES,
+  DARTS_CHALLENGE_ID,
   MILESTONES,
   getChallenge,
   publicChallengeConfig,
   buildEventMessage,
   buildMilestoneMessage,
 } from './challenges.js';
+import {
+  MAX_PLAYERS_PER_GAME,
+  MAX_START_SCORE,
+  MIN_START_SCORE,
+  dartsLabel,
+  normalizeDarts,
+  scoreX01Turn,
+  sumDarts,
+  teamPointsFor,
+} from './darts.js';
 
 const SCHEMA = `
   PRAGMA journal_mode = WAL;
@@ -46,9 +57,61 @@ const SCHEMA = `
     reached_at   TEXT    NOT NULL,
     PRIMARY KEY (challenge_id, percent)
   );
+
+  -- Dart: interne X01-Spiele (zählen in den 10.001-Team-Countdown)
+  CREATE TABLE IF NOT EXISTS dart_games (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    start_score INTEGER NOT NULL,
+    double_out  INTEGER NOT NULL DEFAULT 1,
+    status      TEXT    NOT NULL CHECK (status IN ('active', 'finished', 'aborted')),
+    winner      TEXT,
+    created_by  TEXT    NOT NULL,
+    created_at  TEXT    NOT NULL,
+    finished_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS dart_game_players (
+    game_id   INTEGER NOT NULL REFERENCES dart_games(id),
+    position  INTEGER NOT NULL,
+    user_name TEXT    NOT NULL,
+    PRIMARY KEY (game_id, position)
+  );
+
+  -- Jede Dart-Aufnahme (1–3 Darts), frei geworfen (game_id NULL) oder in einem Spiel
+  CREATE TABLE IF NOT EXISTS dart_turns (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id         INTEGER NOT NULL REFERENCES events(id),
+    game_id          INTEGER REFERENCES dart_games(id),
+    user_name        TEXT    NOT NULL,
+    entered_by       TEXT    NOT NULL,
+    darts            TEXT    NOT NULL,
+    darts_thrown     INTEGER NOT NULL,
+    raw_points       INTEGER NOT NULL,
+    points           INTEGER NOT NULL,
+    bust             INTEGER NOT NULL DEFAULT 0,
+    checkout         INTEGER NOT NULL DEFAULT 0,
+    remaining_before INTEGER,
+    remaining_after  INTEGER,
+    undone           INTEGER NOT NULL DEFAULT 0,
+    created_at       TEXT    NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_dart_turns_user ON dart_turns (user_name, id);
+  CREATE INDEX IF NOT EXISTS idx_dart_turns_game ON dart_turns (game_id, id);
+  CREATE INDEX IF NOT EXISTS idx_dart_turns_event ON dart_turns (event_id);
+`;
+
+const EVENT_SELECT = `
+  SELECT e.*, t.darts AS dart_darts, t.bust AS dart_bust, t.checkout AS dart_checkout,
+         t.raw_points AS dart_raw, t.game_id AS dart_game_id, g.start_score AS dart_start_score
+  FROM events e
+  LEFT JOIN dart_turns t ON t.event_id = e.id
+  LEFT JOIN dart_games g ON g.id = t.game_id
 `;
 
 const RECENT_EVENTS_LIMIT = 30;
+const ACTIVE_GAMES_LIMIT = 8;
+const RECENT_GAMES_LIMIT = 5;
+const GAME_RECENT_TURNS = 6;
 
 function promisify(db) {
   return {
@@ -94,12 +157,97 @@ function toEvent(row) {
     revertsEventId: row.reverts_event_id ?? null,
     createdAt: row.created_at,
   };
+  if (row.dart_darts) {
+    event.dart = {
+      darts: JSON.parse(row.dart_darts),
+      bust: Boolean(row.dart_bust),
+      checkout: Boolean(row.dart_checkout),
+      raw: row.dart_raw,
+      gameId: row.dart_game_id ?? null,
+      startScore: row.dart_start_score ?? null,
+    };
+  }
   event.message = buildEventMessage(event);
   return event;
 }
 
 function percentOf(total, goal) {
   return goal > 0 ? Math.round((total / goal) * 1000) / 10 : 0;
+}
+
+function round1(value) {
+  return Math.round(value * 10) / 10;
+}
+
+function threeDartAverage(scored, darts) {
+  return darts > 0 ? round1((scored / darts) * 3) : 0;
+}
+
+function toTurn(row) {
+  const darts = JSON.parse(row.darts);
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    gameId: row.game_id ?? null,
+    startScore: row.start_score ?? null,
+    player: row.user_name,
+    enteredBy: row.entered_by,
+    darts,
+    label: dartsLabel(darts),
+    dartsThrown: row.darts_thrown,
+    raw: row.raw_points,
+    points: row.points,
+    bust: Boolean(row.bust),
+    checkout: Boolean(row.checkout),
+    remainingBefore: row.remaining_before ?? null,
+    remainingAfter: row.remaining_after ?? null,
+    createdAt: row.created_at,
+  };
+}
+
+// Spielstand eines X01-Spiels aus seinen (nicht zurückgenommenen) Aufnahmen berechnen
+function buildGameState(game, playerNames, turnRows) {
+  const players = playerNames.map((name) => ({
+    name,
+    remaining: game.start_score,
+    scored: 0,
+    darts: 0,
+    turns: 0,
+    average: 0,
+    lastTurn: null,
+  }));
+  const byName = new Map(players.map((p) => [p.name, p]));
+  const turns = turnRows.map(toTurn);
+
+  for (const turn of turns) {
+    const p = byName.get(turn.player);
+    if (!p) continue;
+    p.remaining = turn.remainingAfter ?? p.remaining;
+    p.scored += turn.bust ? 0 : turn.remainingBefore - turn.remainingAfter;
+    p.darts += turn.dartsThrown;
+    p.turns += 1;
+    p.lastTurn = { label: turn.label, raw: turn.raw, bust: turn.bust, checkout: turn.checkout };
+  }
+  for (const p of players) p.average = threeDartAverage(p.scored, p.darts);
+
+  const active = game.status === 'active';
+  const currentIndex = active && players.length ? turns.length % players.length : null;
+
+  return {
+    id: game.id,
+    startScore: game.start_score,
+    doubleOut: Boolean(game.double_out),
+    status: game.status,
+    winner: game.winner ?? null,
+    createdBy: game.created_by,
+    createdAt: game.created_at,
+    finishedAt: game.finished_at ?? null,
+    players,
+    currentPlayer: currentIndex === null ? null : players[currentIndex].name,
+    round: players.length ? Math.floor(turns.length / players.length) + 1 : 1,
+    turnCount: turns.length,
+    recentTurns: turns.slice(-GAME_RECENT_TURNS).reverse(),
+  };
 }
 
 export async function createStore(dbPath) {
@@ -137,51 +285,78 @@ export async function createStore(dbPath) {
     }
   }
 
+  async function getEventById(id) {
+    const row = await db.get(`${EVENT_SELECT} WHERE e.id = ?`, [id]);
+    return row ? toEvent(row) : null;
+  }
+
+  // Beitrag ins Event-Log schreiben, Gesamt-Summe erhöhen und neu erreichte Meilensteine eintragen
+  async function recordContribution(name, challenge, amount, now) {
+    const { lastID } = await db.run(
+      `INSERT INTO events (type, user_name, challenge_id, amount, created_at)
+       VALUES ('tick', ?, ?, ?, ?)`,
+      [name, challenge.id, amount, now],
+    );
+    await db.run('UPDATE stats SET total = total + ?, updated_at = ? WHERE challenge_id = ?', [
+      amount,
+      now,
+      challenge.id,
+    ]);
+    const { total } = await db.get('SELECT total FROM stats WHERE challenge_id = ?', [challenge.id]);
+
+    const milestones = [];
+    if (amount > 0) {
+      for (const percent of MILESTONES) {
+        if (total * 100 < percent * challenge.goal) continue;
+        const { changes } = await db.run(
+          `INSERT OR IGNORE INTO milestones (challenge_id, percent, user_name, reached_at)
+           VALUES (?, ?, ?, ?)`,
+          [challenge.id, percent, name, now],
+        );
+        if (changes > 0) {
+          milestones.push({
+            challengeId: challenge.id,
+            percent,
+            name,
+            reachedAt: now,
+            message: buildMilestoneMessage(challenge, percent, name),
+          });
+        }
+      }
+    }
+    return { eventId: lastID, milestones };
+  }
+
+  // Gegen-Event schreiben, das einen Beitrag aufhebt
+  async function revertEvent(target, name, now) {
+    const { lastID } = await db.run(
+      `INSERT INTO events (type, user_name, challenge_id, amount, reverts_event_id, created_at)
+       VALUES ('undo', ?, ?, ?, ?, ?)`,
+      [name, target.challenge_id, -target.amount, target.id, now],
+    );
+    await db.run('UPDATE stats SET total = total - ?, updated_at = ? WHERE challenge_id = ?', [
+      target.amount,
+      now,
+      target.challenge_id,
+    ]);
+    return lastID;
+  }
+
   async function addTick(name, challengeId) {
     const challenge = getChallenge(challengeId);
     if (!challenge) throw new Error(`Unbekannte Challenge: ${challengeId}`);
+    if (challenge.kind !== 'tick') throw new Error('Darts werden über den Dart-Tracker eingetragen');
 
     return exclusive(() =>
       transaction(async () => {
         const now = new Date().toISOString();
-        const { lastID } = await db.run(
-          `INSERT INTO events (type, user_name, challenge_id, amount, created_at)
-           VALUES ('tick', ?, ?, ?, ?)`,
-          [name, challenge.id, challenge.increment, now],
-        );
-        await db.run('UPDATE stats SET total = total + ?, updated_at = ? WHERE challenge_id = ?', [
-          challenge.increment,
-          now,
-          challenge.id,
-        ]);
-        const { total } = await db.get('SELECT total FROM stats WHERE challenge_id = ?', [challenge.id]);
-
-        const milestones = [];
-        for (const percent of MILESTONES) {
-          if (total * 100 < percent * challenge.goal) continue;
-          const { changes } = await db.run(
-            `INSERT OR IGNORE INTO milestones (challenge_id, percent, user_name, reached_at)
-             VALUES (?, ?, ?, ?)`,
-            [challenge.id, percent, name, now],
-          );
-          if (changes > 0) {
-            milestones.push({
-              challengeId: challenge.id,
-              percent,
-              name,
-              reachedAt: now,
-              message: buildMilestoneMessage(challenge, percent, name),
-            });
-          }
-        }
-
-        const row = await db.get('SELECT * FROM events WHERE id = ?', [lastID]);
-        return { event: toEvent(row), milestones };
+        const { eventId, milestones } = await recordContribution(name, challenge, challenge.increment, now);
+        return { event: await getEventById(eventId), milestones };
       }),
     );
   }
 
-  // Nimmt den letzten eigenen Tick zurück (optional nur in einer bestimmten Challenge).
+  // Nimmt den letzten eigenen Tick zurück (Darts haben ein eigenes Undo pro Aufnahme).
   async function undoLastTick(name, challengeId = null) {
     if (challengeId && !getChallenge(challengeId)) throw new Error(`Unbekannte Challenge: ${challengeId}`);
 
@@ -189,32 +364,315 @@ export async function createStore(dbPath) {
       transaction(async () => {
         const target = await db.get(
           `SELECT e.* FROM events e
-           WHERE e.type = 'tick' AND e.user_name = ?
+           WHERE e.type = 'tick' AND e.user_name = ? AND e.challenge_id != ?
              AND (? IS NULL OR e.challenge_id = ?)
              AND NOT EXISTS (SELECT 1 FROM events u WHERE u.reverts_event_id = e.id)
            ORDER BY e.id DESC
            LIMIT 1`,
-          [name, challengeId, challengeId],
+          [name, DARTS_CHALLENGE_ID, challengeId, challengeId],
         );
         if (!target) return null;
 
         const now = new Date().toISOString();
-        const { lastID } = await db.run(
-          `INSERT INTO events (type, user_name, challenge_id, amount, reverts_event_id, created_at)
-           VALUES ('undo', ?, ?, ?, ?, ?)`,
-          [name, target.challenge_id, -target.amount, target.id, now],
-        );
-        await db.run('UPDATE stats SET total = total - ?, updated_at = ? WHERE challenge_id = ?', [
-          target.amount,
-          now,
-          target.challenge_id,
-        ]);
-
-        const row = await db.get('SELECT * FROM events WHERE id = ?', [lastID]);
-        return { event: toEvent(row) };
+        const undoId = await revertEvent(target, name, now);
+        return { event: await getEventById(undoId) };
       }),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Darts
+  // ---------------------------------------------------------------------------
+
+  async function loadGame(gameId) {
+    const game = await db.get('SELECT * FROM dart_games WHERE id = ?', [gameId]);
+    if (!game) return null;
+    const players = await db.all('SELECT user_name FROM dart_game_players WHERE game_id = ? ORDER BY position', [
+      gameId,
+    ]);
+    const turns = await db.all(
+      `SELECT t.*, g.start_score FROM dart_turns t JOIN dart_games g ON g.id = t.game_id
+       WHERE t.game_id = ? AND t.undone = 0 ORDER BY t.id`,
+      [gameId],
+    );
+    return buildGameState(
+      game,
+      players.map((p) => p.user_name),
+      turns,
+    );
+  }
+
+  async function getDartGame(gameId) {
+    const game = await loadGame(Number(gameId));
+    if (!game) throw new Error('Spiel nicht gefunden');
+    return game;
+  }
+
+  async function createDartGame({ createdBy, players, startScore, doubleOut }) {
+    const score = Number(startScore);
+    if (!Number.isInteger(score) || score < MIN_START_SCORE || score > MAX_START_SCORE) {
+      throw new Error(`Startpunktzahl muss zwischen ${MIN_START_SCORE} und ${MAX_START_SCORE} liegen`);
+    }
+    if (!Array.isArray(players) || players.length < 1 || players.length > MAX_PLAYERS_PER_GAME) {
+      throw new Error(`Ein Spiel braucht 1–${MAX_PLAYERS_PER_GAME} Spieler`);
+    }
+    const seen = new Set();
+    for (const p of players) {
+      const key = p.toLowerCase();
+      if (seen.has(key)) throw new Error(`${p} ist doppelt im Spiel`);
+      seen.add(key);
+    }
+
+    return exclusive(() =>
+      transaction(async () => {
+        const now = new Date().toISOString();
+        const { lastID } = await db.run(
+          `INSERT INTO dart_games (start_score, double_out, status, created_by, created_at)
+           VALUES (?, ?, 'active', ?, ?)`,
+          [score, doubleOut === false ? 0 : 1, createdBy, now],
+        );
+        for (let i = 0; i < players.length; i += 1) {
+          await db.run('INSERT INTO dart_game_players (game_id, position, user_name) VALUES (?, ?, ?)', [
+            lastID,
+            i,
+            players[i],
+          ]);
+        }
+        return loadGame(lastID);
+      }),
+    );
+  }
+
+  // Eine Aufnahme eintragen – frei geworfen (ohne gameId) oder für den Spieler am Wurf in einem Spiel
+  async function addDartTurn({ enteredBy, gameId = null, player = null, darts: rawDarts }) {
+    const darts = normalizeDarts(rawDarts);
+    const challenge = getChallenge(DARTS_CHALLENGE_ID);
+
+    return exclusive(() =>
+      transaction(async () => {
+        const now = new Date().toISOString();
+        let thrower = player || enteredBy;
+        let result;
+        let remainingBefore = null;
+        let game = null;
+
+        if (gameId) {
+          game = await loadGame(Number(gameId));
+          if (!game) throw new Error('Spiel nicht gefunden');
+          if (game.status !== 'active') throw new Error('Das Spiel ist schon beendet');
+          if (player && player !== game.currentPlayer) {
+            throw new Error(`${game.currentPlayer} ist am Wurf – Ansicht wird aktualisiert`);
+          }
+          thrower = game.currentPlayer;
+          remainingBefore = game.players.find((p) => p.name === thrower).remaining;
+          result = scoreX01Turn(darts, remainingBefore, game.doubleOut);
+        } else {
+          const raw = sumDarts(darts);
+          result = { darts, raw, scored: raw, bust: false, checkout: false, remainingAfter: null };
+        }
+
+        const teamPoints = teamPointsFor(result);
+        const { eventId, milestones } = await recordContribution(thrower, challenge, teamPoints, now);
+        const { lastID: turnId } = await db.run(
+          `INSERT INTO dart_turns (event_id, game_id, user_name, entered_by, darts, darts_thrown, raw_points,
+             points, bust, checkout, remaining_before, remaining_after, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            eventId,
+            game ? game.id : null,
+            thrower,
+            enteredBy,
+            JSON.stringify(result.darts),
+            result.darts.length,
+            result.raw,
+            teamPoints,
+            result.bust ? 1 : 0,
+            result.checkout ? 1 : 0,
+            remainingBefore,
+            game ? result.remainingAfter : null,
+            now,
+          ],
+        );
+
+        if (game && result.checkout) {
+          await db.run(`UPDATE dart_games SET status = 'finished', winner = ?, finished_at = ? WHERE id = ?`, [
+            thrower,
+            now,
+            game.id,
+          ]);
+        }
+
+        const turnRow = await db.get(
+          `SELECT t.*, g.start_score FROM dart_turns t LEFT JOIN dart_games g ON g.id = t.game_id WHERE t.id = ?`,
+          [turnId],
+        );
+        return {
+          event: await getEventById(eventId),
+          milestones,
+          turn: toTurn(turnRow),
+          game: game ? await loadGame(game.id) : null,
+        };
+      }),
+    );
+  }
+
+  // Letzte Aufnahme zurücknehmen: im Spiel die letzte Aufnahme des Spiels, sonst die letzte eigene freie Aufnahme
+  async function undoDartTurn({ requester, gameId = null }) {
+    return exclusive(() =>
+      transaction(async () => {
+        let turn;
+        if (gameId) {
+          const game = await db.get('SELECT * FROM dart_games WHERE id = ?', [Number(gameId)]);
+          if (!game) throw new Error('Spiel nicht gefunden');
+          if (game.status === 'aborted') throw new Error('Das Spiel wurde abgebrochen');
+          turn = await db.get('SELECT * FROM dart_turns WHERE game_id = ? AND undone = 0 ORDER BY id DESC LIMIT 1', [
+            game.id,
+          ]);
+        } else {
+          turn = await db.get(
+            `SELECT * FROM dart_turns
+             WHERE game_id IS NULL AND undone = 0 AND (user_name = ? OR entered_by = ?)
+             ORDER BY id DESC LIMIT 1`,
+            [requester, requester],
+          );
+        }
+        if (!turn) throw new Error('Keine Aufnahme zum Rückgängigmachen gefunden');
+
+        const now = new Date().toISOString();
+        const target = await db.get('SELECT * FROM events WHERE id = ?', [turn.event_id]);
+        const undoId = await revertEvent(target, turn.user_name, now);
+        await db.run('UPDATE dart_turns SET undone = 1 WHERE id = ?', [turn.id]);
+        if (turn.game_id && turn.checkout) {
+          // Checkout zurückgenommen → Spiel läuft weiter
+          await db.run(
+            `UPDATE dart_games SET status = 'active', winner = NULL, finished_at = NULL WHERE id = ?`,
+            [turn.game_id],
+          );
+        }
+        return {
+          event: await getEventById(undoId),
+          game: turn.game_id ? await loadGame(turn.game_id) : null,
+        };
+      }),
+    );
+  }
+
+  async function abortDartGame({ gameId }) {
+    return exclusive(() =>
+      transaction(async () => {
+        const game = await db.get('SELECT * FROM dart_games WHERE id = ?', [Number(gameId)]);
+        if (!game) throw new Error('Spiel nicht gefunden');
+        if (game.status !== 'active') throw new Error('Das Spiel läuft nicht mehr');
+        await db.run(`UPDATE dart_games SET status = 'aborted', finished_at = ? WHERE id = ?`, [
+          new Date().toISOString(),
+          game.id,
+        ]);
+        return loadGame(game.id);
+      }),
+    );
+  }
+
+  async function getDartPlayerStats(name = null) {
+    const rows = await db.all(
+      `SELECT user_name,
+              SUM(points) AS points,
+              SUM(CASE WHEN bust = 0 THEN raw_points ELSE 0 END) AS scored,
+              SUM(darts_thrown) AS darts,
+              COUNT(*) AS turns,
+              SUM(CASE WHEN bust = 0 AND raw_points = 180 THEN 1 ELSE 0 END) AS count180,
+              MAX(CASE WHEN bust = 0 THEN raw_points END) AS best_turn,
+              MAX(CASE WHEN checkout = 1 THEN raw_points END) AS best_checkout
+       FROM dart_turns
+       WHERE undone = 0 AND (? IS NULL OR user_name = ?)
+       GROUP BY user_name`,
+      [name, name],
+    );
+    const wins = await db.all(
+      `SELECT winner AS user_name, COUNT(*) AS wins FROM dart_games
+       WHERE status = 'finished' GROUP BY winner`,
+    );
+    const played = await db.all(
+      `SELECT p.user_name, COUNT(*) AS played FROM dart_game_players p
+       JOIN dart_games g ON g.id = p.game_id WHERE g.status = 'finished' GROUP BY p.user_name`,
+    );
+    const winsBy = new Map(wins.map((r) => [r.user_name, r.wins]));
+    const playedBy = new Map(played.map((r) => [r.user_name, r.played]));
+
+    return rows
+      .map((r) => ({
+        name: r.user_name,
+        points: r.points,
+        scored: r.scored,
+        darts: r.darts,
+        turns: r.turns,
+        average: threeDartAverage(r.scored, r.darts),
+        count180: r.count180,
+        bestTurn: r.best_turn ?? 0,
+        bestCheckout: r.best_checkout ?? 0,
+        gamesWon: winsBy.get(r.user_name) ?? 0,
+        gamesPlayed: playedBy.get(r.user_name) ?? 0,
+      }))
+      .sort((a, b) => b.points - a.points || b.average - a.average);
+  }
+
+  async function getDartsOverview() {
+    const challenge = getChallenge(DARTS_CHALLENGE_ID);
+    const { total } = await db.get('SELECT total FROM stats WHERE challenge_id = ?', [challenge.id]);
+    const totals = await db.get(
+      `SELECT COALESCE(SUM(darts_thrown), 0) AS darts,
+              COALESCE(SUM(CASE WHEN bust = 0 THEN raw_points ELSE 0 END), 0) AS scored,
+              COALESCE(SUM(CASE WHEN bust = 0 AND raw_points = 180 THEN 1 ELSE 0 END), 0) AS count180,
+              COUNT(*) AS turns
+       FROM dart_turns WHERE undone = 0`,
+    );
+    const activeRows = await db.all(
+      `SELECT id FROM dart_games WHERE status = 'active' ORDER BY id DESC LIMIT ?`,
+      [ACTIVE_GAMES_LIMIT],
+    );
+    const activeGames = [];
+    for (const row of activeRows) activeGames.push(await loadGame(row.id));
+
+    const finishedRows = await db.all(
+      `SELECT g.id, g.start_score, g.winner, g.finished_at,
+              (SELECT GROUP_CONCAT(user_name, ', ') FROM
+                 (SELECT user_name FROM dart_game_players WHERE game_id = g.id ORDER BY position)) AS players
+       FROM dart_games g WHERE g.status = 'finished' ORDER BY g.finished_at DESC LIMIT ?`,
+      [RECENT_GAMES_LIMIT],
+    );
+
+    return {
+      goal: challenge.goal,
+      total,
+      remaining: Math.max(0, challenge.goal - total),
+      darts: totals.darts,
+      turns: totals.turns,
+      average: threeDartAverage(totals.scored, totals.darts),
+      count180: totals.count180,
+      players: await getDartPlayerStats(),
+      activeGames,
+      recentGames: finishedRows.map((r) => ({
+        id: r.id,
+        startScore: r.start_score,
+        winner: r.winner,
+        players: r.players ? r.players.split(', ') : [],
+        finishedAt: r.finished_at,
+      })),
+    };
+  }
+
+  async function getDartHistory(name, limit = 150) {
+    const rows = await db.all(
+      `SELECT t.*, g.start_score FROM dart_turns t LEFT JOIN dart_games g ON g.id = t.game_id
+       WHERE t.user_name = ? AND t.undone = 0 ORDER BY t.id DESC LIMIT ?`,
+      [name, limit],
+    );
+    const [stats] = await getDartPlayerStats(name);
+    return { stats: stats ?? null, turns: rows.map(toTurn) };
+  }
+
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
 
   async function getLeaderboards() {
     const rows = await db.all(
@@ -234,7 +692,7 @@ export async function createStore(dbPath) {
   }
 
   async function getRecentEvents(limit = RECENT_EVENTS_LIMIT) {
-    const rows = await db.all('SELECT * FROM events ORDER BY id DESC LIMIT ?', [limit]);
+    const rows = await db.all(`${EVENT_SELECT} ORDER BY e.id DESC LIMIT ?`, [limit]);
     return rows.map(toEvent);
   }
 
@@ -269,6 +727,7 @@ export async function createStore(dbPath) {
       milestoneSteps: MILESTONES,
       leaderboards: await getLeaderboards(),
       recentEvents: await getRecentEvents(),
+      darts: await getDartsOverview(),
       players,
       eventCount,
       serverTime: new Date().toISOString(),
@@ -276,16 +735,21 @@ export async function createStore(dbPath) {
   }
 
   async function getEvents({ limit = 500, offset = 0 } = {}) {
-    const rows = await db.all('SELECT * FROM events ORDER BY id ASC LIMIT ? OFFSET ?', [limit, offset]);
+    const rows = await db.all(`${EVENT_SELECT} ORDER BY e.id ASC LIMIT ? OFFSET ?`, [limit, offset]);
     return rows.map(toEvent);
   }
 
   async function reset() {
     return exclusive(() =>
       transaction(async () => {
+        await db.run('DELETE FROM dart_turns');
+        await db.run('DELETE FROM dart_game_players');
+        await db.run('DELETE FROM dart_games');
         await db.run('DELETE FROM milestones');
         await db.run('DELETE FROM events');
-        await db.run("DELETE FROM sqlite_sequence WHERE name = 'events'");
+        await db.run(
+          "DELETE FROM sqlite_sequence WHERE name IN ('events', 'dart_turns', 'dart_games')",
+        );
         await db.run('UPDATE stats SET total = 0, updated_at = NULL');
       }),
     );
@@ -296,5 +760,20 @@ export async function createStore(dbPath) {
     await db.close();
   }
 
-  return { addTick, undoLastTick, getState, getEvents, getRecentEvents, getLeaderboards, reset, close };
+  return {
+    addTick,
+    undoLastTick,
+    createDartGame,
+    addDartTurn,
+    undoDartTurn,
+    abortDartGame,
+    getDartGame,
+    getDartHistory,
+    getState,
+    getEvents,
+    getRecentEvents,
+    getLeaderboards,
+    reset,
+    close,
+  };
 }

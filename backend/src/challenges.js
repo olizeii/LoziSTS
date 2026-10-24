@@ -1,19 +1,23 @@
-// Zentrale Definition der 4 Gruppen-Challenges.
-// Der Server bestimmt die Schrittweite – Clients schicken nur die Challenge-ID.
+// Zentrale Definition der Gruppen-Challenges.
+// kind 'tick': feste Schrittweite, Clients schicken nur die Challenge-ID.
+// kind 'darts': Punkte kommen aus dem Dart-Tracker (Team-Countdown von 10.001).
+import { buildDartMessage } from './darts.js';
 
 export const CHALLENGES = [
   {
     id: 'rubiks',
+    kind: 'tick',
     label: "Rubik's Cube",
     emoji: '🧩',
     unit: 'Cubes',
     unitSingular: 'Cube',
     increment: 1,
-    goal: 50,
+    goal: 500,
     tickMessage: (name, amount) => `🧩 ${name} hat ${amount === 1 ? 'einen' : amount} Rubik's Cube gelöst!`,
   },
   {
     id: 'pushups',
+    kind: 'tick',
     label: 'Liegestütze',
     emoji: '💪',
     unit: 'Liegestütze',
@@ -24,6 +28,7 @@ export const CHALLENGES = [
   },
   {
     id: 'running',
+    kind: 'tick',
     label: 'Laufen',
     emoji: '🏃',
     unit: 'km',
@@ -34,6 +39,7 @@ export const CHALLENGES = [
   },
   {
     id: 'funnel',
+    kind: 'tick',
     label: 'Trichter',
     emoji: '🍺',
     unit: 'Trichter',
@@ -42,10 +48,33 @@ export const CHALLENGES = [
     goal: 10,
     tickMessage: (name, amount) => `🍺 ${name} hat ${amount === 1 ? 'einen' : amount} Trichter vernichtet!`,
   },
+  {
+    id: 'beer',
+    kind: 'tick',
+    label: 'Bier',
+    emoji: '🍻',
+    unit: 'Bier',
+    unitSingular: 'Bier',
+    increment: 1,
+    goal: 120,
+    tickMessage: (name, amount) => `🍻 ${name} hat ${amount === 1 ? 'ein' : amount} Bier geleert! Prost!`,
+  },
+  {
+    id: 'darts',
+    kind: 'darts',
+    label: 'Darts',
+    emoji: '🎯',
+    unit: 'Punkte',
+    unitSingular: 'Punkt',
+    increment: null,
+    goal: 10001,
+  },
 ];
 
 // Prozent-Schwellen, bei denen das Dashboard groß feiert.
 export const MILESTONES = [25, 50, 75, 100];
+
+export const DARTS_CHALLENGE_ID = 'darts';
 
 const byId = new Map(CHALLENGES.map((c) => [c.id, c]));
 
@@ -54,8 +83,8 @@ export function getChallenge(id) {
 }
 
 export function publicChallengeConfig(challenge) {
-  const { id, label, emoji, unit, increment, goal } = challenge;
-  return { id, label, emoji, unit, increment, goal };
+  const { id, kind, label, emoji, unit, increment, goal } = challenge;
+  return { id, kind, label, emoji, unit, increment, goal };
 }
 
 export function buildEventMessage(event) {
@@ -63,7 +92,11 @@ export function buildEventMessage(event) {
   if (!challenge) return `${event.name}: ${event.amount}`;
   if (event.type === 'undo') {
     const amount = Math.abs(event.amount);
+    if (challenge.kind === 'darts') return `↩️ ${event.name}: Dart-Aufnahme (${amount} Punkte) zurückgenommen`;
     return `↩️ ${event.name} hat ${amount} ${amount === 1 ? challenge.unitSingular : challenge.unit} zurückgenommen`;
+  }
+  if (challenge.kind === 'darts') {
+    return event.dart ? buildDartMessage(event.name, event.dart) : `🎯 ${event.name} wirft ${event.amount} Punkte`;
   }
   return challenge.tickMessage(event.name, event.amount);
 }

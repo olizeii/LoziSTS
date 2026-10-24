@@ -5,6 +5,9 @@ const FILES = {
   undo: 'sounds/undo.wav',
   milestone: 'sounds/milestone.wav',
   complete: 'sounds/complete.wav',
+  bust: 'sounds/bust.wav',
+  oneEighty: 'sounds/oneEighty.wav',
+  checkout: 'sounds/checkout.wav',
 };
 
 const VOLUME = {
@@ -12,6 +15,9 @@ const VOLUME = {
   undo: 0.4,
   milestone: 0.9,
   complete: 1,
+  bust: 0.6,
+  oneEighty: 1,
+  checkout: 0.95,
 };
 
 // Mehrere Instanzen pro Sound, damit sich schnelle Ticks überlagern können

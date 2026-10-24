@@ -11,6 +11,22 @@ export const AUTOSTART = new URLSearchParams(window.location.search).has('autost
 
 export const LEADERBOARD_SIZE = 5;
 
+// Seitenwechsel: ?rotate=40 an der URL ändert die Sekunden pro Seite
+const rotateParam = Number(new URLSearchParams(window.location.search).get('rotate'));
+export const ROTATE_SECONDS = rotateParam > 0 ? rotateParam : 25;
+
+export const PAGES = [
+  { id: 'challenges', label: 'Challenges' },
+  { id: 'games', label: 'Games' },
+  { id: 'collections', label: 'Mario Kart · Minecraft · Just Dance' },
+];
+
+// Farbe eines Games (Hex) als CSS-Variablen wie bei den Challenges
+export function colorStyle(color) {
+  const c = color || '#a855f7';
+  return { '--c': c, '--c2': c, '--glow': `${c}8c` };
+}
+
 export const CHALLENGE_THEME = {
   rubiks: { color: '#22d3ee', color2: '#3b82f6', glow: 'rgba(34, 211, 238, 0.55)' },
   pushups: { color: '#fb923c', color2: '#ef4444', glow: 'rgba(249, 115, 22, 0.55)' },

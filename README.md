@@ -32,6 +32,47 @@ Ziele und Schritte stehen in `backend/src/challenges.js`.
 - Checkout-Tipps (z. B. 170 → T20 T20 BULL) und Bust-Vorschau direkt beim Eintippen.
 - TV: eigene Effekte und Sounds für **180**, **Checkout** und **Bust**.
 
+## 🎮 Games (Dashboard-Seiten 2 und 3)
+
+Das TV-Dashboard wechselt automatisch alle 25 Sekunden zwischen **Challenges**, **Games** und
+**Mario Kart · Minecraft · Just Dance**. Bei einem neuen Ergebnis springt es direkt auf die passende Seite.
+In der App: Hauptscreen → Karte **„GAMES“**.
+
+| Game | Ziel | Eingabe in der App |
+|------|------|--------------------|
+| 🪂 Fortnite | 3 Siege am Stück (B3B) – Serie reißt bei einer Niederlage | Gewonnen / Verloren |
+| 🔺 Valorant | 5 Siege | Gewonnen / Verloren |
+| 💣 CS:GO | 5 Siege | Gewonnen / Verloren |
+| 👑 Fall Guys | 3 Siege | Gewonnen / Verloren |
+| 🔦 Lethal Company | Runde 5 erreichen | erreichte Runde |
+| 🦖 Dino Run | 10.000 Punkte | Punkte (bester Wert zählt) |
+| 🕳️ Hole.io | 100 % | Prozent |
+| 🐍 Slither.io | Platz 1 | erreichter Platz |
+| 🕰️ TimeGuessr | 2 Mio. Punkte **gesamt** (alle Spiele zusammen) | Punkte pro Spiel (max. 50.000) |
+| 🛹 Subway Surfers | 10 Mio. Punkte | Score |
+| 🎤 Freestyle | einmal machen | Erledigt |
+| 💰 Wer wird Millionär | einmal durchspielen | Erledigt |
+| 🏎️ Mario Kart Wii | 8 Cups in 150cc auf **Gold** | Gold / Silber / Bronze pro Cup |
+| 💃 Just Dance 2016 | alle 43 Songs einmal tanzen | Song abhaken |
+| ⛏️ Minecraft | alle Advancements | **automatisch** vom Minecraft-Server |
+
+Jede Eingabe lässt sich mit „Meine letzte zurücknehmen“ korrigieren. Ziele und Spiele stehen in
+`backend/src/games.js`, die Just-Dance-Songliste in `backend/src/data/justdance-2016.json`.
+
+### ⛏️ Minecraft verbinden
+
+Der Tracker liest die Advancements direkt aus dem Ordner des Minecraft-Java-Servers (nur lesend, alle 15 Sekunden).
+In der `.env` neben `docker-compose.yml` den Ordner eintragen, in dem `server.properties` liegt:
+
+```
+MINECRAFT_DIR=/home/oli/minecraft
+```
+
+Danach `docker compose up -d`. Die Version (1.21–1.21.11, 122–125 Advancements) wird automatisch aus
+`logs/latest.log` erkannt, sonst `MINECRAFT_VERSION=1.21.4` setzen. In der App unter Games → Minecraft steht,
+ob die Verbindung steht („Live mit dem Minecraft-Server verbunden“) oder was fehlt. Vorhandener Fortschritt
+wird beim Start still übernommen; danach erscheint jedes neue Advancement im Ticker.
+
 ## 🐳 Auf dem Server starten (Docker)
 
 Voraussetzung auf dem Server: Docker mit Compose-Plugin (`docker compose version`).
@@ -136,6 +177,11 @@ Für die Entwicklung mit Hot-Reload: `npm run dev` → `http://localhost:5173`
 | `D`         | Dart-Aufnahme testen (nur lokal)                         |
 | `Shift+D`   | 180-Overlay testen (nur lokal)                           |
 | `C`         | Checkout-Overlay testen (nur lokal)                      |
+| `G`         | „Game geschafft“-Overlay testen (nur lokal)              |
+| `←` / `→`   | Seite wechseln                                           |
+| `P`         | Automatischen Seitenwechsel pausieren                    |
+
+`?rotate=40` an der URL stellt die Sekunden pro Seite ein (Standard 25).
 
 `?autostart` an der URL überspringt den Start-Screen (z. B. für Chrome im Kiosk-Modus mit
 `--autoplay-policy=no-user-gesture-required`).

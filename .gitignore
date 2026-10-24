@@ -12,3 +12,6 @@ backend/data/*.db-shm
 .env
 .env.local
 !.env.example
+
+# Platzhalter-Mount, wenn MINECRAFT_DIR nicht gesetzt ist
+.minecraft-nicht-gesetzt/

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CelebrationOverlay } from './components/CelebrationOverlay.jsx';
 import { ChallengeBar } from './components/ChallengeBar.jsx';
+import { CollectionsPage } from './components/CollectionsPage.jsx';
 import { DartsPanel } from './components/DartsPanel.jsx';
+import { GamesPage } from './components/GamesPage.jsx';
 import { Header } from './components/Header.jsx';
 import { Leaderboard } from './components/Leaderboard.jsx';
 import { StartOverlay } from './components/StartOverlay.jsx';
 import { Ticker } from './components/Ticker.jsx';
-import { AUTOSTART, SERVER_URL, themeFor } from './config.js';
+import { AUTOSTART, PAGES, ROTATE_SECONDS, SERVER_URL, themeFor } from './config.js';
 import { useIdleCursor } from './hooks/useIdleCursor.js';
+import { usePageRotation } from './hooks/usePageRotation.js';
 import { dartsLabel } from './lib/darts.js';
 import { tickBurst } from './lib/effects.js';
 import { sound } from './lib/sound.js';
@@ -39,6 +42,9 @@ export default function App() {
   const tickerRef = useRef(null);
   const seqRef = useRef(0);
   const stateRef = useRef(null);
+  // Während einer Feier bleibt die aktuelle Seite stehen
+  const rotation = usePageRotation(PAGES.length, ROTATE_SECONDS, celebrations.length > 0);
+  const { showPage } = rotation;
 
   useIdleCursor();
   useEffect(() => sound.subscribe(setMuted), []);
@@ -96,7 +102,21 @@ export default function App() {
 
   const handleUndo = useCallback(({ event }) => celebrateEvent(event), [celebrateEvent]);
 
-  const { state, connected } = useTracker({ onTick: handleTick, onUndo: handleUndo });
+  // Neues Game-Ergebnis: zur passenden Seite springen, Karte aufleuchten lassen, ggf. groß feiern
+  const handleGame = useCallback(
+    ({ event, completion }) => {
+      const key = nextKey();
+      const game = stateRef.current?.games?.list.find((g) => g.id === event.gameId);
+      if (game?.page) showPage(game.page - 1);
+      setFlashes((prev) => ({ ...prev, [event.gameId]: { key } }));
+      tickerRef.current?.push(event);
+      sound.play(event.type === 'undo' ? 'undo' : event.value === 0 && (game?.type === 'wins' || game?.type === 'streak') ? 'bust' : 'tick');
+      if (completion) queueCelebrations([{ kind: 'gameComplete', ...completion }]);
+    },
+    [queueCelebrations, showPage],
+  );
+
+  const { state, connected } = useTracker({ onTick: handleTick, onUndo: handleUndo, onGame: handleGame });
   stateRef.current = state;
 
   // Lokale Effekt-Tests (werden NICHT gespeichert) – praktisch, um Sound & Konfetti am TV zu prüfen
@@ -106,6 +126,13 @@ export default function App() {
       if (!current) return;
       const tickChallenges = current.challenges.filter((c) => c.kind === 'tick');
       const base = { id: `test-${nextKey()}`, type: 'tick', name: 'TV-Test', createdAt: new Date().toISOString() };
+
+      if (type === 'game') {
+        const games = current.games?.list ?? [];
+        const game = games[Math.floor(Math.random() * games.length)];
+        if (game) queueCelebrations([{ kind: 'gameComplete', label: game.label, emoji: game.emoji, color: game.color, task: game.task, name: 'TV-Test' }]);
+        return;
+      }
 
       if (type === 'darts' || type === '180' || type === 'checkout') {
         const darts = type === '180' ? [T20, T20, T20] : type === 'checkout' ? [T20, { segment: 16, multiplier: 2, points: 32 }] : [randomTestDart(), randomTestDart(), randomTestDart()];
@@ -136,7 +163,7 @@ export default function App() {
           : [];
       handleTick({ event, milestones });
     },
-    [handleTick],
+    [handleTick, queueCelebrations],
   );
 
   const start = useCallback(() => {
@@ -162,10 +189,14 @@ export default function App() {
       else if (key === 't') runTest(e.shiftKey ? 'milestone' : 'tick');
       else if (key === 'd') runTest(e.shiftKey ? '180' : 'darts');
       else if (key === 'c') runTest('checkout');
+      else if (key === 'g') runTest('game');
+      else if (key === 'arrowright') rotation.next();
+      else if (key === 'arrowleft') rotation.prev();
+      else if (key === 'p') rotation.togglePause();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [started, start, runTest]);
+  }, [started, start, runTest, rotation]);
 
   const dismissCelebration = useCallback(() => setCelebrations((prev) => prev.slice(1)), []);
 
@@ -175,6 +206,10 @@ export default function App() {
   const fillRef = (id) => (el) => {
     barRefs.current[id] = el;
   };
+  // Ticker-Historie: Challenges/Darts und Games gemischt, neueste zuerst
+  const tickerHistory = [...(state?.recentEvents ?? []), ...(state?.games?.recentEvents ?? [])]
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+    .slice(0, 40);
 
   return (
     <div className="relative flex h-full flex-col">
@@ -183,10 +218,18 @@ export default function App() {
       </div>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        <Header state={state} connected={connected} muted={muted} onToggleMute={() => sound.toggleMuted()} />
+        <Header
+          state={state}
+          connected={connected}
+          muted={muted}
+          onToggleMute={() => sound.toggleMuted()}
+          rotation={rotation}
+        />
 
-        {state ? (
-          <main className="grid min-h-0 flex-1 grid-rows-[minmax(0,1.6fr)_minmax(0,1fr)] gap-[1.6vh] px-[2.2vw] py-[1.8vh]">
+        {state && rotation.page === 1 && state.games && <GamesPage games={state.games} flashes={flashes} />}
+        {state && rotation.page === 2 && state.games && <CollectionsPage games={state.games} flashes={flashes} />}
+        {state && rotation.page === 0 ? (
+          <main className="page-in grid min-h-0 flex-1 grid-rows-[minmax(0,1.6fr)_minmax(0,1fr)] gap-[1.6vh] px-[2.2vw] py-[1.8vh]">
             <div className="grid min-h-0 grid-cols-[1.3fr_1fr] gap-[1.2vw]">
               <section className="grid min-h-0 gap-[1.1vh]" style={{ gridTemplateRows: `repeat(${tickChallenges.length}, minmax(0, 1fr))` }}>
                 {tickChallenges.map((challenge) => (
@@ -234,7 +277,7 @@ export default function App() {
               ))}
             </section>
           </main>
-        ) : (
+        ) : state ? null : (
           <div className="grid flex-1 place-items-center">
             <div className="flex flex-col items-center gap-[2vh] text-[2.6vh] font-semibold text-white/60">
               <div className="spinner h-[6vh] w-[6vh] rounded-full border-[0.6vh] border-white/10 border-t-fuchsia-500" />
@@ -243,7 +286,7 @@ export default function App() {
           </div>
         )}
 
-        <Ticker ref={tickerRef} history={state?.recentEvents ?? []} />
+        <Ticker ref={tickerRef} history={tickerHistory} />
       </div>
 
       {state && !connected && (

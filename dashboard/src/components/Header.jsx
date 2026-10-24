@@ -1,15 +1,15 @@
-import { EVENT_TITLE } from '../config.js';
+import { EVENT_TITLE, PAGES, ROTATE_SECONDS } from '../config.js';
 import { AppQrCode } from './AppQrCode.jsx';
 import { useAnimatedNumber } from '../hooks/useAnimatedNumber.js';
 import { useClock } from '../hooks/useClock.js';
 
-export function Header({ state, connected, muted, onToggleMute }) {
+export function Header({ state, connected, muted, onToggleMute, rotation }) {
   const clock = useClock();
   const overall = state
     ? state.challenges.reduce((sum, c) => sum + Math.min(c.percent, 100), 0) / state.challenges.length
     : 0;
   const animatedOverall = useAnimatedNumber(overall);
-  const animatedEvents = useAnimatedNumber(state?.eventCount ?? 0);
+  const games = state?.games;
 
   return (
     <header className="flex items-center justify-between gap-[2vw] px-[2.2vw] pt-[2vh]">
@@ -21,16 +21,14 @@ export function Header({ state, connected, muted, onToggleMute }) {
           <h1 className="title-gradient font-display text-[3.7vh] leading-none font-black tracking-[0.1em] whitespace-nowrap uppercase">
             {EVENT_TITLE}
           </h1>
-          <p className="mt-[0.6vh] text-[1.6vh] font-semibold tracking-[0.25em] whitespace-nowrap text-muted uppercase">
-            Gemeinsam knacken wir alle {state?.challenges.length ?? ''} Challenges
-          </p>
+          <PageTabs rotation={rotation} />
         </div>
       </div>
 
       <div className="flex items-center gap-[1vw]">
         <Stat label="Gesamt" value={`${animatedOverall.toFixed(1)}%`} highlight />
         <Stat label="Spieler" value={state?.players ?? 0} />
-        <Stat label="Ticks" value={Math.round(animatedEvents)} />
+        <Stat label="Games" value={games ? `${games.completed}/${games.total}` : '–'} />
         <AppQrCode />
 
         <div
@@ -62,6 +60,36 @@ export function Header({ state, connected, muted, onToggleMute }) {
         </div>
       </div>
     </header>
+  );
+}
+
+// Seitenanzeige: aktive Seite mit Countdown-Balken bis zum nächsten Wechsel
+function PageTabs({ rotation }) {
+  if (!rotation) return null;
+  return (
+    <div className="mt-[0.8vh] flex items-center gap-[0.5vw]">
+      {PAGES.map((p, i) => {
+        const active = i === rotation.page;
+        return (
+          <span
+            key={p.id}
+            className={`relative overflow-hidden rounded-full border px-[0.7vw] py-[0.25vh] text-[1.35vh] font-bold tracking-[0.15em] whitespace-nowrap uppercase ${
+              active ? 'border-fuchsia-400/60 bg-fuchsia-500/15 text-white' : 'border-white/10 text-white/35'
+            }`}
+          >
+            {active && (
+              <span
+                key={rotation.cycleKey}
+                className="page-progress absolute inset-y-0 left-0 bg-fuchsia-500/25"
+                style={{ animationDuration: `${ROTATE_SECONDS}s`, animationPlayState: rotation.stopped ? 'paused' : 'running' }}
+              />
+            )}
+            <span className="relative">{p.label}</span>
+          </span>
+        );
+      })}
+      {rotation.manualPause && <span className="text-[1.3vh] font-bold text-yellow-300">⏸ pausiert (P)</span>}
+    </div>
   );
 }
 

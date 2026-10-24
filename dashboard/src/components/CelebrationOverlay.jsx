@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { themeFor, themeStyle } from '../config.js';
+import { colorStyle, themeFor, themeStyle } from '../config.js';
 import { completeCelebration, milestoneCelebration } from '../lib/effects.js';
 import { sound } from '../lib/sound.js';
 
@@ -48,6 +48,25 @@ const KINDS = {
       footer: (
         <>
           Geworfen von <span className="text-[var(--c)]">{item.name}</span> 💪
+        </>
+      ),
+    }),
+  },
+  gameComplete: {
+    durationMs: () => 7000,
+    fire: () => {
+      sound.play('complete');
+      completeCelebration();
+    },
+    render: (item) => ({
+      style: colorStyle(item.color),
+      kicker: '🏆 Game geschafft 🏆',
+      big: item.emoji,
+      bigSize: 'text-[20vh]',
+      title: item.label,
+      footer: (
+        <>
+          {item.task} – den letzten Schritt machte <span className="text-[var(--c)]">{item.name}</span> 🔥
         </>
       ),
     }),

@@ -56,6 +56,7 @@ export function useTracker() {
     socket.on('tick', (payload) => applyState(payload.state));
     socket.on('undo', (payload) => applyState(payload.state));
     socket.on('darts:game', storeGame);
+    socket.on('game', (payload) => applyState(payload.state));
     socket.on('admin:reset', () => {
       setGames({});
       setResetCount((n) => n + 1);
@@ -112,5 +113,15 @@ export function useTracker() {
     [emit, emitGame],
   );
 
-  return { state, games, status, lastError, resetCount, tick, undo, adminReset, darts };
+  // Games (Seite 2/3 auf dem TV)
+  const gamesApi = useMemo(
+    () => ({
+      addEntry: (name, gameId, value, item = null) => emit('games:entry', { name, gameId, value, item }),
+      undoEntry: (name, gameId) => emit('games:undo', { name, gameId }),
+      fetchHistory: (gameId) => emit('games:history', { gameId }),
+    }),
+    [emit],
+  );
+
+  return { state, games, status, lastError, resetCount, tick, undo, adminReset, darts, gamesApi };
 }

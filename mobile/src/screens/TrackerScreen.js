@@ -45,7 +45,34 @@ function DartsCard({ state, name, onPress }) {
   );
 }
 
-export function TrackerScreen({ name, tracker, onChangeName, onOpenDarts }) {
+// Einstieg in die Games (Fortnite, Valorant, Mario Kart, Minecraft …)
+function GamesCard({ state, onPress }) {
+  const games = state.games;
+  if (!games) return null;
+  const preview = games.list.map((g) => g.emoji).join(' ');
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.dartsCard, styles.gamesCard, pressed && styles.dartsCardPressed]}>
+      <Text style={styles.dartsEmoji}>🎮</Text>
+      <View style={styles.dartsMiddle}>
+        <Text style={styles.dartsLabel}>GAMES · {games.completed}/{games.total}</Text>
+        <View style={styles.dartsTrack}>
+          <View style={[styles.dartsFill, styles.gamesFill, { width: `${(games.completed / games.total) * 100}%` }]} />
+        </View>
+        <Text style={styles.dartsInfo} numberOfLines={1}>
+          {preview}
+        </Text>
+        <Text style={styles.dartsMine} numberOfLines={1}>
+          Siege, Scores, Pokale & Songs eintragen
+        </Text>
+      </View>
+      <View style={[styles.dartsChip, styles.gamesChip]}>
+        <Text style={styles.dartsChipText}>ÖFFNEN ›</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+export function TrackerScreen({ name, tracker, onChangeName, onOpenDarts, onOpenGames }) {
   const { state, status, lastError, tick, undo } = tracker;
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState(null);
@@ -159,6 +186,7 @@ export function TrackerScreen({ name, tracker, onChangeName, onOpenDarts }) {
               />
             ))}
           <DartsCard state={state} name={name} onPress={onOpenDarts} />
+          <GamesCard state={state} onPress={onOpenGames} />
         </ScrollView>
       ) : (
         <View style={styles.loading}>
@@ -254,6 +282,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   dartsChipText: { fontFamily: FONTS.display, fontSize: 13, color: '#000' },
+  gamesCard: { borderColor: COLORS.accent, shadowColor: COLORS.accent },
+  gamesFill: { backgroundColor: COLORS.accent },
+  gamesChip: { backgroundColor: COLORS.accent },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { color: COLORS.muted, fontSize: 15 },
   footer: { paddingHorizontal: 16, paddingTop: 12, gap: 8 },

@@ -8,7 +8,38 @@ const url = process.argv[2] || process.env.SERVER_URL || 'http://localhost:3000'
 const count = Number(process.argv[3]) || 40;
 const NAMES = ['Max', 'Lena', 'Tim', 'Sarah', 'Jonas', 'Mia', 'Paul', 'Anna', 'Felix', 'Laura'];
 // Gewichtung: Liegestütze und Bier werden öfter getickt als Trichter, "darts" = Dart-Aufnahme
-const ACTIONS = ['pushups', 'pushups', 'pushups', 'rubiks', 'rubiks', 'running', 'beer', 'beer', 'funnel', 'darts', 'darts', 'darts'];
+const ACTIONS = ['pushups', 'pushups', 'pushups', 'rubiks', 'rubiks', 'running', 'beer', 'beer', 'funnel', 'darts', 'darts', 'darts', 'game', 'game', 'game', 'game'];
+
+const CUPS = ['mushroom', 'flower', 'star', 'special', 'shell', 'banana', 'leaf', 'lightning'];
+const SONGS = ['uptown-funk', 'teacher', 'animals', 'fancy', 'lights', 'circus', 'blame', 'hey-mama', 'rabiosa', 'chiwawa'];
+const randomInt = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
+
+// Zufälliges Spielergebnis für die Games-Seiten
+function randomGameEntry() {
+  const gameId = pick(['valorant', 'csgo', 'fallguys', 'fortnite', 'fortnite', 'lethal', 'dino', 'holeio', 'slither', 'timeguessr', 'subway', 'mariokart', 'justdance', 'justdance', 'freestyle']);
+  switch (gameId) {
+    case 'lethal':
+      return { gameId, value: randomInt(1, 5) };
+    case 'dino':
+      return { gameId, value: randomInt(800, 11000) };
+    case 'holeio':
+      return { gameId, value: randomInt(40, 100) };
+    case 'slither':
+      return { gameId, value: randomInt(1, 12) };
+    case 'timeguessr':
+      return { gameId, value: randomInt(15000, 48000) };
+    case 'subway':
+      return { gameId, value: randomInt(200000, 9000000) };
+    case 'mariokart':
+      return { gameId, item: pick(CUPS), value: randomInt(1, 3) };
+    case 'justdance':
+      return { gameId, item: pick(SONGS), value: 1 };
+    case 'freestyle':
+      return { gameId, value: 1 };
+    default:
+      return { gameId, value: Math.random() < 0.6 ? 1 : 0 };
+  }
+}
 
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -56,6 +87,8 @@ socket.once('connect', async () => {
       const current = game.players.find((p) => p.name === game.currentPlayer);
       res = await ask('darts:turn', { name: current.name, gameId: game.id, player: current.name, darts: gameTurn(current.remaining) });
       if (res.ok) game = res.game;
+    } else if (action === 'game') {
+      res = await ask('games:entry', { name: pick(NAMES), ...randomGameEntry() });
     } else if (action === 'darts') {
       res = await ask('darts:turn', { name: pick(NAMES), darts: randomTurn() });
     } else {

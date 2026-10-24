@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { APP_URL, themeStyle } from '../config.js';
+import { APP_URL, colorStyle, themeStyle } from '../config.js';
 
 // Lauftext-Geschwindigkeit in Bildschirmbreiten pro Sekunde
 const SPEED = 0.075;
@@ -154,7 +154,7 @@ function TickerItem({ event, live }) {
   return (
     <span
       className={`ticker-item ${live && !isUndo ? 'ticker-item--live' : ''} ${isUndo ? 'text-white/45 italic' : 'text-white/90'}`}
-      style={event.challengeId ? themeStyle(event.challengeId) : undefined}
+      style={event.color ? colorStyle(event.color) : event.challengeId ? themeStyle(event.challengeId) : undefined}
     >
       {time && <span className="mr-[0.7vw] font-display text-[1.6vh] font-bold text-white/35">{time}</span>}
       {event.message}

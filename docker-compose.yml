@@ -19,8 +19,12 @@ services:
     environment:
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       TZ: ${TZ:-Europe/Berlin}
+      MINECRAFT_DIR: /minecraft
+      MINECRAFT_VERSION: ${MINECRAFT_VERSION:-}
     volumes:
       - lanparty-data:/data
+      # Minecraft-Server-Ordner nur lesend einbinden (Pfad in .env: MINECRAFT_DIR)
+      - ${MINECRAFT_DIR:-./.minecraft-nicht-gesetzt}:/minecraft:ro
 
   # Expo-Dev-Server für die Handy-App  →  in Expo Go: exp://<SERVER_IP>:8081
   expo:

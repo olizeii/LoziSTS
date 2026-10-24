@@ -4,11 +4,11 @@ import { SERVER_URL } from '../config.js';
 
 // Hält die Socket.io-Verbindung und den kompletten Server-State.
 // onTick/onUndo werden nur für Live-Events aufgerufen (nicht beim initialen Laden).
-export function useTracker({ onTick, onUndo }) {
+export function useTracker({ onTick, onUndo, onGame }) {
   const [state, setState] = useState(null);
   const [connected, setConnected] = useState(false);
-  const handlers = useRef({ onTick, onUndo });
-  handlers.current = { onTick, onUndo };
+  const handlers = useRef({ onTick, onUndo, onGame });
+  handlers.current = { onTick, onUndo, onGame };
 
   useEffect(() => {
     const socket = io(SERVER_URL, {
@@ -28,6 +28,10 @@ export function useTracker({ onTick, onUndo }) {
     socket.on('undo', (payload) => {
       setState(payload.state);
       handlers.current.onUndo?.(payload);
+    });
+    socket.on('game', (payload) => {
+      setState(payload.state);
+      handlers.current.onGame?.(payload);
     });
 
     return () => {

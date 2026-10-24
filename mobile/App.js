@@ -9,6 +9,8 @@ import { DartGameScreen } from './src/screens/DartGameScreen';
 import { DartHistoryScreen } from './src/screens/DartHistoryScreen';
 import { DartNewGameScreen } from './src/screens/DartNewGameScreen';
 import { DartsHomeScreen } from './src/screens/DartsHomeScreen';
+import { GameScreen } from './src/screens/GameScreen';
+import { GamesHomeScreen } from './src/screens/GamesHomeScreen';
 import { NameScreen } from './src/screens/NameScreen';
 import { TrackerScreen } from './src/screens/TrackerScreen';
 import { clearName, loadName, saveName } from './src/storage';
@@ -101,6 +103,10 @@ export default function App() {
     content = <DartGameScreen key={route.params.gameId} {...screenProps} gameId={route.params.gameId} />;
   } else if (route.name === 'dartHistory') {
     content = <DartHistoryScreen {...screenProps} />;
+  } else if (route.name === 'games') {
+    content = <GamesHomeScreen {...screenProps} />;
+  } else if (route.name === 'game') {
+    content = <GameScreen key={route.params.gameId} {...screenProps} gameId={route.params.gameId} />;
   } else {
     content = (
       <TrackerScreen
@@ -108,6 +114,7 @@ export default function App() {
         tracker={tracker}
         onChangeName={handleChangeName}
         onOpenDarts={() => navigate('darts')}
+        onOpenGames={() => navigate('games')}
       />
     );
   }

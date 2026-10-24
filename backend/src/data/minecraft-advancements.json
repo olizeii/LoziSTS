@@ -1,0 +1,893 @@
+{
+ "source": "Minecraft Java 1.21–1.21.11 (Mojang-Daten über misode/mcmeta)",
+ "note": "since = ab dieser Version vorhanden, until = ab dieser Version entfernt",
+ "advancements": [
+  {
+   "id": "minecraft:story/cure_zombie_villager",
+   "tab": "story",
+   "title": "Zombiearzt",
+   "titleEn": "Zombie Doctor",
+   "frame": "goal"
+  },
+  {
+   "id": "minecraft:story/deflect_arrow",
+   "tab": "story",
+   "title": "Heute nicht, danke",
+   "titleEn": "Not Today, Thank You",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/enchant_item",
+   "tab": "story",
+   "title": "Verzauberer",
+   "titleEn": "Enchanter",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/enter_the_end",
+   "tab": "story",
+   "title": "Das Ende?",
+   "titleEn": "The End?",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/enter_the_nether",
+   "tab": "story",
+   "title": "Wir müssen noch tiefer",
+   "titleEn": "We Need to Go Deeper",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/follow_ender_eye",
+   "tab": "story",
+   "title": "Das fliegende Auge",
+   "titleEn": "Eye Spy",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/form_obsidian",
+   "tab": "story",
+   "title": "Ice Bucket Challenge",
+   "titleEn": "Ice Bucket Challenge",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/iron_tools",
+   "tab": "story",
+   "title": "Zu viel Eisen im Blut",
+   "titleEn": "Isn't It Iron Pick",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/lava_bucket",
+   "tab": "story",
+   "title": "Manche mögen’s heiß",
+   "titleEn": "Hot Stuff",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/mine_diamond",
+   "tab": "story",
+   "title": "Diamanten!",
+   "titleEn": "Diamonds!",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/mine_stone",
+   "tab": "story",
+   "title": "Steinzeit",
+   "titleEn": "Stone Age",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/obtain_armor",
+   "tab": "story",
+   "title": "Mach dich fein",
+   "titleEn": "Suit Up",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/root",
+   "tab": "story",
+   "title": "Minecraft",
+   "titleEn": "Minecraft",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/shiny_gear",
+   "tab": "story",
+   "title": "Bedeck mich mit Diamanten",
+   "titleEn": "Cover Me with Diamonds",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/smelt_iron",
+   "tab": "story",
+   "title": "Metallurgie",
+   "titleEn": "Acquire Hardware",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:story/upgrade_tools",
+   "tab": "story",
+   "title": "Technischer Fortschritt",
+   "titleEn": "Getting an Upgrade",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/all_effects",
+   "tab": "nether",
+   "title": "Wie haben wir das geschafft?",
+   "titleEn": "How Did We Get Here?",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:nether/all_potions",
+   "tab": "nether",
+   "title": "Eine gefährliche Mischung",
+   "titleEn": "A Furious Cocktail",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:nether/brew_potion",
+   "tab": "nether",
+   "title": "Alchemie",
+   "titleEn": "Local Brewery",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/charge_respawn_anchor",
+   "tab": "nether",
+   "title": "Nicht ganz „sieben“ Leben",
+   "titleEn": "Not Quite \"Nine\" Lives",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/create_beacon",
+   "tab": "nether",
+   "title": "Den Nachbarn heimleuchten",
+   "titleEn": "Bring Home the Beacon",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/create_full_beacon",
+   "tab": "nether",
+   "title": "Leuchtturmwärter",
+   "titleEn": "Beaconator",
+   "frame": "goal"
+  },
+  {
+   "id": "minecraft:nether/distract_piglin",
+   "tab": "nether",
+   "title": "Oh, wie glänzend!",
+   "titleEn": "Oh Shiny",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/explore_nether",
+   "tab": "nether",
+   "title": "Heißbegehrte Reiseziele",
+   "titleEn": "Hot Tourist Destinations",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:nether/fast_travel",
+   "tab": "nether",
+   "title": "Subraumtransport",
+   "titleEn": "Subspace Bubble",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:nether/find_bastion",
+   "tab": "nether",
+   "title": "Das waren noch Zeiten …",
+   "titleEn": "Those Were the Days",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/find_fortress",
+   "tab": "nether",
+   "title": "Eine schreckliche Festung",
+   "titleEn": "A Terrible Fortress",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/get_wither_skull",
+   "tab": "nether",
+   "title": "Nicht den Kopf verlieren",
+   "titleEn": "Spooky Scary Skeleton",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/loot_bastion",
+   "tab": "nether",
+   "title": "Kampfschweine",
+   "titleEn": "War Pigs",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/netherite_armor",
+   "tab": "nether",
+   "title": "Bedeck mich mit Schrott",
+   "titleEn": "Cover Me in Debris",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:nether/obtain_ancient_debris",
+   "tab": "nether",
+   "title": "Verborgen in den Tiefen",
+   "titleEn": "Hidden in the Depths",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/obtain_blaze_rod",
+   "tab": "nether",
+   "title": "Spiel mit dem Feuer",
+   "titleEn": "Into Fire",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/obtain_crying_obsidian",
+   "tab": "nether",
+   "title": "Wer schneidet hier Zwiebeln?",
+   "titleEn": "Who is Cutting Onions?",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/return_to_sender",
+   "tab": "nether",
+   "title": "Zurück zum Absender",
+   "titleEn": "Return to Sender",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:nether/ride_strider",
+   "tab": "nether",
+   "title": "Mach diesem „Boot“ Beine",
+   "titleEn": "This Boat Has Legs",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/ride_strider_in_overworld_lava",
+   "tab": "nether",
+   "title": "Ganz wie zu Hause",
+   "titleEn": "Feels Like Home",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/root",
+   "tab": "nether",
+   "title": "Nether",
+   "titleEn": "Nether",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/summon_wither",
+   "tab": "nether",
+   "title": "Umwitherte Höhen",
+   "titleEn": "Withering Heights",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:nether/uneasy_alliance",
+   "tab": "nether",
+   "title": "Unheilvolle Allianz",
+   "titleEn": "Uneasy Alliance",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:nether/use_lodestone",
+   "tab": "nether",
+   "title": "Weißt du, wo die Leitstein’ stehen?",
+   "titleEn": "Country Lode, Take Me Home",
+   "frame": "task",
+   "until": "1.21.5"
+  },
+  {
+   "id": "minecraft:end/dragon_breath",
+   "tab": "end",
+   "title": "Du brauchst ein Pfefferminz",
+   "titleEn": "You Need a Mint",
+   "frame": "goal"
+  },
+  {
+   "id": "minecraft:end/dragon_egg",
+   "tab": "end",
+   "title": "Die nächste Generation",
+   "titleEn": "The Next Generation",
+   "frame": "goal"
+  },
+  {
+   "id": "minecraft:end/elytra",
+   "tab": "end",
+   "title": "Hinterm Horizont geht’s weiter",
+   "titleEn": "Sky's the Limit",
+   "frame": "goal"
+  },
+  {
+   "id": "minecraft:end/enter_end_gateway",
+   "tab": "end",
+   "title": "Im Transit",
+   "titleEn": "Remote Getaway",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:end/find_end_city",
+   "tab": "end",
+   "title": "Die Stadt am Ende des Spiels",
+   "titleEn": "The City at the End of the Game",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:end/kill_dragon",
+   "tab": "end",
+   "title": "Befreie das Ende",
+   "titleEn": "Free the End",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:end/levitate",
+   "tab": "end",
+   "title": "Schöne Aussicht von hier oben",
+   "titleEn": "Great View From Up Here",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:end/respawn_dragon",
+   "tab": "end",
+   "title": "Das Ende … Schon wieder …",
+   "titleEn": "The End... Again...",
+   "frame": "goal"
+  },
+  {
+   "id": "minecraft:end/root",
+   "tab": "end",
+   "title": "Das Ende",
+   "titleEn": "The End",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/adventuring_time",
+   "tab": "adventure",
+   "title": "Abenteuerzeit",
+   "titleEn": "Adventuring Time",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/arbalistic",
+   "tab": "adventure",
+   "title": "Armbrustschütze",
+   "titleEn": "Arbalistic",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/avoid_vibration",
+   "tab": "adventure",
+   "title": "Schleichen 100",
+   "titleEn": "Sneak 100",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/blowback",
+   "tab": "adventure",
+   "title": "Gegenwind",
+   "titleEn": "Blowback",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/brush_armadillo",
+   "tab": "adventure",
+   "title": "Ist das nicht putzig?",
+   "titleEn": "Isn't It Scute?",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/bullseye",
+   "tab": "adventure",
+   "title": "Volltreffer!",
+   "titleEn": "Bullseye",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/craft_decorated_pot_using_only_sherds",
+   "tab": "adventure",
+   "title": "Behutsame Restaurierung",
+   "titleEn": "Careful Restoration",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/crafters_crafting_crafters",
+   "tab": "adventure",
+   "title": "Werker werkeln Werker",
+   "titleEn": "Crafters Crafting Crafters",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/fall_from_world_height",
+   "tab": "adventure",
+   "title": "Höhlen & Klippen",
+   "titleEn": "Caves & Cliffs",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/heart_transplanter",
+   "tab": "adventure",
+   "title": "Herzverpflanzer",
+   "titleEn": "Heart Transplanter",
+   "frame": "task",
+   "since": "1.21.6"
+  },
+  {
+   "id": "minecraft:adventure/hero_of_the_village",
+   "tab": "adventure",
+   "title": "Dorfheld",
+   "titleEn": "Hero of the Village",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/honey_block_slide",
+   "tab": "adventure",
+   "title": "Eine klebrige Angelegenheit",
+   "titleEn": "Sticky Situation",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/kill_a_mob",
+   "tab": "adventure",
+   "title": "Monsterjäger",
+   "titleEn": "Monster Hunter",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/kill_all_mobs",
+   "tab": "adventure",
+   "title": "Meisterjäger",
+   "titleEn": "Monsters Hunted",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/kill_mob_near_sculk_catalyst",
+   "tab": "adventure",
+   "title": "Es verbreitet sich",
+   "titleEn": "It Spreads",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/lighten_up",
+   "tab": "adventure",
+   "title": "Aufhellen",
+   "titleEn": "Lighten Up",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/lightning_rod_with_villager_no_fire",
+   "tab": "adventure",
+   "title": "Überspannungsschutz",
+   "titleEn": "Surge Protector",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/minecraft_trials_edition",
+   "tab": "adventure",
+   "title": "Minecraft: Prüfungs‐Edition",
+   "titleEn": "Minecraft: Trial(s) Edition",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/ol_betsy",
+   "tab": "adventure",
+   "title": "Ich habe die Knarre gesichert",
+   "titleEn": "Ol' Betsy",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/overoverkill",
+   "tab": "adventure",
+   "title": "Großmeister des Kampfes",
+   "titleEn": "Over-Overkill",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/play_jukebox_in_meadows",
+   "tab": "adventure",
+   "title": "Deine Welt sind die Berge",
+   "titleEn": "Sound of Music",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/read_power_of_chiseled_bookshelf",
+   "tab": "adventure",
+   "title": "Spannung in jedem Band",
+   "titleEn": "The Power of Books",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/revaulting",
+   "tab": "adventure",
+   "title": "Panzerknacker",
+   "titleEn": "Revaulting",
+   "frame": "goal"
+  },
+  {
+   "id": "minecraft:adventure/root",
+   "tab": "adventure",
+   "title": "Abenteuer",
+   "titleEn": "Adventure",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/salvage_sherd",
+   "tab": "adventure",
+   "title": "Achtung vor dem Alten",
+   "titleEn": "Respecting the Remnants",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/shoot_arrow",
+   "tab": "adventure",
+   "title": "Zielübungen",
+   "titleEn": "Take Aim",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/sleep_in_bed",
+   "tab": "adventure",
+   "title": "Träum was Schönes",
+   "titleEn": "Sweet Dreams",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/sniper_duel",
+   "tab": "adventure",
+   "title": "Scharfschützenduell",
+   "titleEn": "Sniper Duel",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/spear_many_mobs",
+   "tab": "adventure",
+   "title": "Fünf auf einen Spieß",
+   "titleEn": "Mob Kabob",
+   "frame": "goal",
+   "since": "1.21.11"
+  },
+  {
+   "id": "minecraft:adventure/spyglass_at_dragon",
+   "tab": "adventure",
+   "title": "Ist es ein Flugzeug?",
+   "titleEn": "Is It a Plane?",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/spyglass_at_ghast",
+   "tab": "adventure",
+   "title": "Ist es ein Ballon?",
+   "titleEn": "Is It a Balloon?",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/spyglass_at_parrot",
+   "tab": "adventure",
+   "title": "Ist es ein Vogel?",
+   "titleEn": "Is It a Bird?",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/summon_iron_golem",
+   "tab": "adventure",
+   "title": "Das 1. Gesetz der Robotik",
+   "titleEn": "Hired Help",
+   "frame": "goal"
+  },
+  {
+   "id": "minecraft:adventure/throw_trident",
+   "tab": "adventure",
+   "title": "Ein Witz zum Wegwerfen",
+   "titleEn": "A Throwaway Joke",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/totem_of_undying",
+   "tab": "adventure",
+   "title": "Post mortem",
+   "titleEn": "Postmortal",
+   "frame": "goal"
+  },
+  {
+   "id": "minecraft:adventure/trade",
+   "tab": "adventure",
+   "title": "Was für ein Geschäft!",
+   "titleEn": "What a Deal!",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/trade_at_world_height",
+   "tab": "adventure",
+   "title": "Sternenhändler",
+   "titleEn": "Star Trader",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/trim_with_all_exclusive_armor_patterns",
+   "tab": "adventure",
+   "title": "Schmieden mit Stil",
+   "titleEn": "Smithing with Style",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/trim_with_any_armor_pattern",
+   "tab": "adventure",
+   "title": "Ein neues Aussehen",
+   "titleEn": "Crafting a New Look",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/two_birds_one_arrow",
+   "tab": "adventure",
+   "title": "Zwei auf einen Streich",
+   "titleEn": "Two Birds, One Arrow",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:adventure/under_lock_and_key",
+   "tab": "adventure",
+   "title": "Hinter Schloss und Riegel",
+   "titleEn": "Under Lock and Key",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/use_lodestone",
+   "tab": "adventure",
+   "title": "Weißt du, wo die Leitstein’ stehen?",
+   "titleEn": "Country Lode, Take Me Home",
+   "frame": "task",
+   "since": "1.21.5"
+  },
+  {
+   "id": "minecraft:adventure/very_very_frightening",
+   "tab": "adventure",
+   "title": "Blitzezucken, Donnerkrach",
+   "titleEn": "Very Very Frightening",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/voluntary_exile",
+   "tab": "adventure",
+   "title": "Freiwilliges Exil",
+   "titleEn": "Voluntary Exile",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/walk_on_powder_snow_with_leather_boots",
+   "tab": "adventure",
+   "title": "Leicht wie ein Kaninchen",
+   "titleEn": "Light as a Rabbit",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/who_needs_rockets",
+   "tab": "adventure",
+   "title": "Wer braucht schon Raketen?",
+   "titleEn": "Who Needs Rockets?",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:adventure/whos_the_pillager_now",
+   "tab": "adventure",
+   "title": "Wer ist jetzt der Plünderer?",
+   "titleEn": "Who's the Pillager Now?",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/allay_deliver_cake_to_note_block",
+   "tab": "husbandry",
+   "title": "Geburtstagslied",
+   "titleEn": "Birthday Song",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/allay_deliver_item_to_player",
+   "tab": "husbandry",
+   "title": "Du hast ’n Freund in mir",
+   "titleEn": "You've Got a Friend in Me",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/axolotl_in_a_bucket",
+   "tab": "husbandry",
+   "title": "Das niedlichste Raubtier",
+   "titleEn": "The Cutest Predator",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/balanced_diet",
+   "tab": "husbandry",
+   "title": "Ausgewogene Ernährung",
+   "titleEn": "A Balanced Diet",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:husbandry/bred_all_animals",
+   "tab": "husbandry",
+   "title": "Paarweise",
+   "titleEn": "Two by Two",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:husbandry/breed_an_animal",
+   "tab": "husbandry",
+   "title": "Die Hühnchen und die Blümchen",
+   "titleEn": "The Parrots and the Bats",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/complete_catalogue",
+   "tab": "husbandry",
+   "title": "Ein kompletter Katerlog",
+   "titleEn": "A Complete Catalogue",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:husbandry/feed_snifflet",
+   "tab": "husbandry",
+   "title": "Schnupperkurs",
+   "titleEn": "Little Sniffs",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/fishy_business",
+   "tab": "husbandry",
+   "title": "Anglerglück",
+   "titleEn": "Fishy Business",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/froglights",
+   "tab": "husbandry",
+   "title": "Mit vereinten Kräften!",
+   "titleEn": "With Our Powers Combined!",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:husbandry/kill_axolotl_target",
+   "tab": "husbandry",
+   "title": "Die heilende Kraft der Freundschaft!",
+   "titleEn": "The Healing Power of Friendship!",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/leash_all_frog_variants",
+   "tab": "husbandry",
+   "title": "Wenn die Kerle um die Häuser ziehen",
+   "titleEn": "When the Squad Hops into Town",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/make_a_sign_glow",
+   "tab": "husbandry",
+   "title": "Leuchte und staune!",
+   "titleEn": "Glow and Behold!",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/obtain_netherite_hoe",
+   "tab": "husbandry",
+   "title": "Landwirt aus Leidenschaft",
+   "titleEn": "Serious Dedication",
+   "frame": "challenge"
+  },
+  {
+   "id": "minecraft:husbandry/obtain_sniffer_egg",
+   "tab": "husbandry",
+   "title": "Ein ungewöhnlicher Geruch",
+   "titleEn": "Smells Interesting",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/place_dried_ghast_in_water",
+   "tab": "husbandry",
+   "title": "Bleib hydriert!",
+   "titleEn": "Stay Hydrated!",
+   "frame": "task",
+   "since": "1.21.6"
+  },
+  {
+   "id": "minecraft:husbandry/plant_any_sniffer_seed",
+   "tab": "husbandry",
+   "title": "Wir säen Geschichte",
+   "titleEn": "Planting the Past",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/plant_seed",
+   "tab": "husbandry",
+   "title": "Hobbygärtner",
+   "titleEn": "A Seedy Place",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/remove_wolf_armor",
+   "tab": "husbandry",
+   "title": "Schnipp‐schnapp!",
+   "titleEn": "Shear Brilliance",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/repair_wolf_armor",
+   "tab": "husbandry",
+   "title": "So gut wie neu",
+   "titleEn": "Good as New",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/ride_a_boat_with_a_goat",
+   "tab": "husbandry",
+   "title": "Ohne Geiß kein Preis!",
+   "titleEn": "Whatever Floats Your Goat!",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/root",
+   "tab": "husbandry",
+   "title": "Landwirtschaft",
+   "titleEn": "Husbandry",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/safely_harvest_honey",
+   "tab": "husbandry",
+   "title": "Sssei unser Gast",
+   "titleEn": "Bee Our Guest",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/silk_touch_nest",
+   "tab": "husbandry",
+   "title": "Bienenwanderung",
+   "titleEn": "Total Beelocation",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/tactical_fishing",
+   "tab": "husbandry",
+   "title": "Taktisches Fischen",
+   "titleEn": "Tactical Fishing",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/tadpole_in_a_bucket",
+   "tab": "husbandry",
+   "title": "Im Eimer",
+   "titleEn": "Bukkit Bukkit",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/tame_an_animal",
+   "tab": "husbandry",
+   "title": "Allerbeste Freunde",
+   "titleEn": "Best Friends Forever",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/wax_off",
+   "tab": "husbandry",
+   "title": "Polieren",
+   "titleEn": "Wax Off",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/wax_on",
+   "tab": "husbandry",
+   "title": "Auftragen",
+   "titleEn": "Wax On",
+   "frame": "task"
+  },
+  {
+   "id": "minecraft:husbandry/whole_pack",
+   "tab": "husbandry",
+   "title": "Das ganze Rudel",
+   "titleEn": "The Whole Pack",
+   "frame": "challenge"
+  }
+ ]
+}

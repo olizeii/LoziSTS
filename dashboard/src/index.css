@@ -298,6 +298,32 @@ body {
   }
 }
 
+/* ---------- Seitenwechsel ---------- */
+
+.page-in {
+  animation: page-in 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.5vh) scale(0.99);
+  }
+}
+
+.page-progress {
+  width: 0;
+  animation-name: page-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes page-progress {
+  to {
+    width: 100%;
+  }
+}
+
 /* ---------- Darts ---------- */
 
 .dart-board-bg {

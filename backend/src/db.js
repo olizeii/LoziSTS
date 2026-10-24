@@ -20,6 +20,16 @@ import {
   sumDarts,
   teamPointsFor,
 } from './darts.js';
+import {
+  GAMES,
+  buildGameCompleteMessage,
+  buildGameMessage,
+  buildMinecraftMessage,
+  computeGame,
+  getGame,
+  validateEntry,
+} from './games.js';
+import { catalogFor } from './minecraft.js';
 
 const SCHEMA = `
   PRAGMA journal_mode = WAL;
@@ -98,7 +108,32 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_dart_turns_user ON dart_turns (user_name, id);
   CREATE INDEX IF NOT EXISTS idx_dart_turns_game ON dart_turns (game_id, id);
   CREATE INDEX IF NOT EXISTS idx_dart_turns_event ON dart_turns (event_id);
+
+  -- Games (Seite 2/3): jede Eingabe (Sieg/Niederlage, Score, Pokal, Song, Minecraft-Advancement)
+  CREATE TABLE IF NOT EXISTS game_entries (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id    TEXT    NOT NULL,
+    user_name  TEXT    NOT NULL,
+    item       TEXT,
+    ref        TEXT,
+    value      INTEGER NOT NULL,
+    message    TEXT,
+    silent     INTEGER NOT NULL DEFAULT 0,
+    undone     INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT    NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_game_entries_game ON game_entries (game_id, id);
+
+  -- Geschaffte Games (damit jedes nur einmal groß gefeiert wird)
+  CREATE TABLE IF NOT EXISTS game_completions (
+    game_id      TEXT PRIMARY KEY,
+    user_name    TEXT NOT NULL,
+    completed_at TEXT NOT NULL
+  );
 `;
+
+const RECENT_GAME_EVENTS_LIMIT = 30;
+const GAME_HISTORY_LIMIT = 200;
 
 const EVENT_SELECT = `
   SELECT e.*, t.darts AS dart_darts, t.bust AS dart_bust, t.checkout AS dart_checkout,
@@ -671,6 +706,193 @@ export async function createStore(dbPath) {
   }
 
   // ---------------------------------------------------------------------------
+  // Games (Seite 2/3)
+  // ---------------------------------------------------------------------------
+
+  // Minecraft-Katalog und Sync-Status (wird bei jedem Sync aktualisiert)
+  const minecraftState = { catalog: catalogFor(null), status: { ok: false, error: 'Noch nicht synchronisiert' } };
+  // Nach Start/Reset wird der vorhandene Minecraft-Fortschritt still übernommen (kein Ticker-Spam)
+  let minecraftSilentImport = true;
+
+  function toGameEntry(row) {
+    return { id: row.id, name: row.user_name, value: row.value, item: row.item, ref: row.ref, createdAt: row.created_at };
+  }
+
+  function toGameEvent(row, game) {
+    return {
+      id: `g${row.id}`,
+      kind: 'game',
+      type: 'tick',
+      gameId: game.id,
+      challengeId: game.id,
+      color: game.color,
+      name: row.user_name,
+      value: row.value,
+      item: row.item,
+      message: row.message,
+      createdAt: row.created_at,
+    };
+  }
+
+  async function loadGameEntries(gameId) {
+    const rows = await db.all('SELECT * FROM game_entries WHERE game_id = ? AND undone = 0 ORDER BY id', [gameId]);
+    return rows.map(toGameEntry);
+  }
+
+  async function computeGameState(game) {
+    return computeGame(game, await loadGameEntries(game.id), minecraftState);
+  }
+
+  // Erstmals geschafft? Dann einmalig als Feier zurückgeben
+  async function checkCompletion(game, before, after, name, now) {
+    if (!after.completed || before.completed) return null;
+    const { changes } = await db.run(
+      'INSERT OR IGNORE INTO game_completions (game_id, user_name, completed_at) VALUES (?, ?, ?)',
+      [game.id, name, now],
+    );
+    if (!changes) return null;
+    return { gameId: game.id, label: game.label, emoji: game.emoji, color: game.color, task: game.task, name, message: buildGameCompleteMessage(game, name) };
+  }
+
+  async function addGameEntry({ name, gameId, value, item = null }) {
+    const game = getGame(gameId);
+    if (!game) throw new Error(`Unbekanntes Spiel: ${gameId}`);
+    const entry = validateEntry(game, { value, item });
+
+    return exclusive(() =>
+      transaction(async () => {
+        const now = new Date().toISOString();
+        const before = await computeGameState(game);
+        const { lastID } = await db.run(
+          'INSERT INTO game_entries (game_id, user_name, item, value, created_at) VALUES (?, ?, ?, ?, ?)',
+          [game.id, name, entry.item, entry.value, now],
+        );
+        const after = await computeGameState(game);
+        const message = buildGameMessage(game, { name, ...entry }, after);
+        await db.run('UPDATE game_entries SET message = ? WHERE id = ?', [message, lastID]);
+        const completion = await checkCompletion(game, before, after, name, now);
+        const row = await db.get('SELECT * FROM game_entries WHERE id = ?', [lastID]);
+        return { event: toGameEvent(row, game), game: after, completion };
+      }),
+    );
+  }
+
+  // Letzte eigene Eingabe in diesem Spiel zurücknehmen
+  async function undoGameEntry({ name, gameId }) {
+    const game = getGame(gameId);
+    if (!game) throw new Error(`Unbekanntes Spiel: ${gameId}`);
+    if (game.type === 'minecraft') throw new Error('Minecraft wird automatisch synchronisiert');
+
+    return exclusive(() =>
+      transaction(async () => {
+        const target = await db.get(
+          `SELECT * FROM game_entries WHERE game_id = ? AND user_name = ? AND undone = 0 ORDER BY id DESC LIMIT 1`,
+          [game.id, name],
+        );
+        if (!target) throw new Error('Keine eigene Eingabe zum Rückgängigmachen gefunden');
+        await db.run('UPDATE game_entries SET undone = 1 WHERE id = ?', [target.id]);
+        const after = await computeGameState(game);
+        const event = {
+          ...toGameEvent(target, game),
+          id: `gu${target.id}`,
+          type: 'undo',
+          message: `↩️ ${game.emoji} ${game.label}: Eingabe von ${name} zurückgenommen`,
+          createdAt: new Date().toISOString(),
+        };
+        return { event, game: after };
+      }),
+    );
+  }
+
+  // Minecraft-Momentaufnahme übernehmen; liefert neue Advancements als Ticker-Events
+  async function syncMinecraft(snapshot) {
+    const game = getGame('minecraft');
+    const now = new Date().toISOString();
+    if (!snapshot.ok) {
+      minecraftState.status = { ok: false, error: snapshot.error, lastSync: now };
+      return { events: [], completion: null, changed: false };
+    }
+    minecraftState.catalog = catalogFor(snapshot.version);
+    minecraftState.status = {
+      ok: true,
+      version: snapshot.version,
+      versionDetected: snapshot.versionDetected,
+      world: snapshot.world,
+      players: snapshot.players.length,
+      lastSync: now,
+    };
+    const known = new Set(minecraftState.catalog.map((a) => a.id));
+    const titles = new Map(minecraftState.catalog.map((a) => [a.id, a.title]));
+    const silent = minecraftSilentImport;
+    minecraftSilentImport = false;
+
+    return exclusive(() =>
+      transaction(async () => {
+        const existing = await db.all("SELECT item, ref FROM game_entries WHERE game_id = 'minecraft'");
+        const have = new Set(existing.map((r) => `${r.ref}|${r.item}`));
+        const fresh = [];
+        for (const player of snapshot.players) {
+          for (const adv of player.done) {
+            if (!known.has(adv.id) || have.has(`${player.uuid}|${adv.id}`)) continue;
+            fresh.push({ player, adv });
+          }
+        }
+        if (!fresh.length) return { events: [], completion: null, changed: false };
+
+        // chronologisch eintragen, damit "wer war zuerst" stimmt
+        fresh.sort((a, b) => (a.adv.at ?? now).localeCompare(b.adv.at ?? now));
+        const before = await computeGameState(game);
+        const events = [];
+        for (const { player, adv } of fresh) {
+          const teamNew = !(await db.get("SELECT 1 FROM game_entries WHERE game_id = 'minecraft' AND item = ?", [adv.id]));
+          const { lastID } = await db.run(
+            `INSERT INTO game_entries (game_id, user_name, item, ref, value, silent, created_at)
+             VALUES ('minecraft', ?, ?, ?, 1, ?, ?)`,
+            [player.name, adv.id, player.uuid, silent || !teamNew ? 1 : 0, silent ? now : adv.at ?? now],
+          );
+          if (!silent && teamNew) {
+            const after = await computeGameState(game);
+            const message = buildMinecraftMessage(player.name, titles.get(adv.id), after);
+            await db.run('UPDATE game_entries SET message = ? WHERE id = ?', [message, lastID]);
+            const row = await db.get('SELECT * FROM game_entries WHERE id = ?', [lastID]);
+            events.push(toGameEvent(row, game));
+          }
+        }
+        const after = await computeGameState(game);
+        const last = fresh[fresh.length - 1].player.name;
+        const completion = silent ? null : await checkCompletion(game, before, after, last, now);
+        return { events, completion, changed: true };
+      }),
+    );
+  }
+
+  async function getGameHistory(gameId, limit = GAME_HISTORY_LIMIT) {
+    const game = getGame(gameId);
+    if (!game) throw new Error(`Unbekanntes Spiel: ${gameId}`);
+    const rows = await db.all(
+      'SELECT * FROM game_entries WHERE game_id = ? AND undone = 0 ORDER BY id DESC LIMIT ?',
+      [game.id, limit],
+    );
+    return rows.map((r) => ({ ...toGameEntry(r), message: r.message }));
+  }
+
+  async function getGamesState() {
+    const list = [];
+    for (const game of GAMES) list.push(await computeGameState(game));
+    const recentRows = await db.all(
+      `SELECT * FROM game_entries WHERE undone = 0 AND silent = 0 AND message IS NOT NULL
+       ORDER BY id DESC LIMIT ?`,
+      [RECENT_GAME_EVENTS_LIMIT],
+    );
+    return {
+      list,
+      completed: list.filter((g) => g.completed).length,
+      total: list.length,
+      recentEvents: recentRows.map((r) => toGameEvent(r, getGame(r.game_id) ?? { id: r.game_id, color: null })),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
 
@@ -728,6 +950,7 @@ export async function createStore(dbPath) {
       leaderboards: await getLeaderboards(),
       recentEvents: await getRecentEvents(),
       darts: await getDartsOverview(),
+      games: await getGamesState(),
       players,
       eventCount,
       serverTime: new Date().toISOString(),
@@ -742,13 +965,16 @@ export async function createStore(dbPath) {
   async function reset() {
     return exclusive(() =>
       transaction(async () => {
+        await db.run('DELETE FROM game_entries');
+        await db.run('DELETE FROM game_completions');
+        minecraftSilentImport = true;
         await db.run('DELETE FROM dart_turns');
         await db.run('DELETE FROM dart_game_players');
         await db.run('DELETE FROM dart_games');
         await db.run('DELETE FROM milestones');
         await db.run('DELETE FROM events');
         await db.run(
-          "DELETE FROM sqlite_sequence WHERE name IN ('events', 'dart_turns', 'dart_games')",
+          "DELETE FROM sqlite_sequence WHERE name IN ('events', 'dart_turns', 'dart_games', 'game_entries')",
         );
         await db.run('UPDATE stats SET total = 0, updated_at = NULL');
       }),
@@ -769,6 +995,11 @@ export async function createStore(dbPath) {
     abortDartGame,
     getDartGame,
     getDartHistory,
+    addGameEntry,
+    undoGameEntry,
+    syncMinecraft,
+    getGameHistory,
+    getGamesState,
     getState,
     getEvents,
     getRecentEvents,

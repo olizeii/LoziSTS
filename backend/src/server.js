@@ -9,6 +9,7 @@ import express from 'express';
 import { Server } from 'socket.io';
 import { CHALLENGES, publicChallengeConfig } from './challenges.js';
 import { createStore } from './db.js';
+import { readMinecraftSnapshot } from './minecraft.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,6 +19,10 @@ const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'lanpa
 const STATIC_DIR = process.env.STATIC_DIR || path.join(__dirname, '..', '..', 'dashboard', 'dist');
 const WEB_APP_DIR = process.env.WEB_APP_DIR || path.join(__dirname, '..', '..', 'mobile', 'dist-web');
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+// Minecraft-Server-Ordner (enthält server.properties, usercache.json und die Welt)
+const MINECRAFT_DIR = process.env.MINECRAFT_DIR || '';
+const MINECRAFT_VERSION = process.env.MINECRAFT_VERSION || '';
+const MINECRAFT_SYNC_MS = (Number(process.env.MINECRAFT_SYNC_SECONDS) || 15) * 1000;
 
 const MAX_NAME_LENGTH = 24;
 const RATE_LIMIT_WINDOW_MS = 1000;
@@ -132,6 +137,64 @@ async function handleAbortGame(payload) {
   return { game };
 }
 
+// --- Games (Seite 2/3) ----------------------------------------------------------
+
+async function handleGameEntry(payload) {
+  const name = requireName(payload.name);
+  const { event, game, completion } = await store.addGameEntry({
+    name,
+    gameId: payload.gameId,
+    value: payload.value,
+    item: payload.item ?? null,
+  });
+  io.emit('game', { event, completion, state: await store.getState() });
+  console.log(`[game] ${event.message}`);
+  if (completion) console.log(`[game] ${completion.message}`);
+  return { event, game, completion };
+}
+
+async function handleGameUndo(payload) {
+  const name = requireName(payload.name);
+  const { event, game } = await store.undoGameEntry({ name, gameId: payload.gameId });
+  io.emit('game', { event, completion: null, state: await store.getState() });
+  console.log(`[game] ${event.message}`);
+  return { event, game };
+}
+
+let minecraftSyncRunning = false;
+let lastMinecraftStatus = '';
+
+// Liest den Minecraft-Server-Ordner und verteilt neue Advancements an alle
+async function syncMinecraft() {
+  if (minecraftSyncRunning) return;
+  minecraftSyncRunning = true;
+  try {
+    const snapshot = await readMinecraftSnapshot({ dir: MINECRAFT_DIR, version: MINECRAFT_VERSION });
+    const { events, completion, changed } = await store.syncMinecraft(snapshot);
+    const statusKey = snapshot.ok ? `ok|${snapshot.version}|${snapshot.players.length}` : `error|${snapshot.error}`;
+    if (statusKey !== lastMinecraftStatus) {
+      console.log(snapshot.ok
+        ? `[minecraft] verbunden: Welt "${snapshot.world}", Version ${snapshot.version ?? 'unbekannt'}, ${snapshot.players.length} Spieler`
+        : `[minecraft] ${snapshot.error}`);
+    }
+    if (!changed && statusKey === lastMinecraftStatus) return;
+    lastMinecraftStatus = statusKey;
+    const state = await store.getState();
+    if (!events.length) {
+      io.emit('state', state);
+      return;
+    }
+    events.forEach((event, i) => {
+      io.emit('game', { event, completion: i === events.length - 1 ? completion : null, state });
+      console.log(`[minecraft] ${event.message}`);
+    });
+  } catch (err) {
+    console.error('[minecraft] Sync-Fehler:', err);
+  } finally {
+    minecraftSyncRunning = false;
+  }
+}
+
 function adminError(status, message) {
   const err = new Error(message);
   err.status = status;
@@ -153,6 +216,9 @@ async function handleReset(token, source) {
   io.emit('state', await store.getState());
   io.emit('admin:reset');
   console.log(`[admin] Datenbank zurückgesetzt (über ${source})`);
+  // Minecraft-Fortschritt steckt in der Welt selbst → gleich wieder (still) übernehmen
+  lastMinecraftStatus = '';
+  syncMinecraft();
 }
 
 // --- REST API -------------------------------------------------------------------
@@ -310,6 +376,9 @@ io.on('connection', async (socket) => {
   onAction('darts:abortGame', handleAbortGame);
   onAction('darts:game', async (payload) => ({ game: await store.getDartGame(payload.gameId) }), { limited: false });
   onAction('darts:history', async (payload) => store.getDartHistory(requireName(payload.name)), { limited: false });
+  onAction('games:entry', handleGameEntry);
+  onAction('games:undo', handleGameUndo);
+  onAction('games:history', async (payload) => ({ entries: await store.getGameHistory(payload.gameId) }), { limited: false });
   onAction('admin:reset', async (payload) => {
     await handleReset(payload.token, `App (${payload.name ?? 'unbekannt'})`);
     return {};
@@ -348,11 +417,15 @@ server.listen(PORT, HOST, () => {
   console.log('==============================================');
 });
 
+syncMinecraft();
+const minecraftTimer = setInterval(syncMinecraft, MINECRAFT_SYNC_MS);
+
 let shuttingDown = false;
 async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`\n[server] ${signal} empfangen – fahre herunter...`);
+  clearInterval(minecraftTimer);
   io.close();
   server.close();
   try {

@@ -40,6 +40,11 @@ export default function App() {
   );
   const goBack = useCallback(() => setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev)), []);
 
+  // Nach einem Admin-Reset zurück zum Startscreen (offene Spiele gibt es nicht mehr)
+  useEffect(() => {
+    if (tracker.resetCount > 0) setStack([HOME]);
+  }, [tracker.resetCount]);
+
   // Android-Zurück-Taste
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {

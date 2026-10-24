@@ -11,6 +11,8 @@ export function useTracker() {
   const [games, setGames] = useState({});
   const [status, setStatus] = useState('connecting'); // 'connected' | 'connecting' | 'offline'
   const [lastError, setLastError] = useState(null);
+  // Zählt hoch, wenn ein Admin alles zurückgesetzt hat (App springt dann zum Startscreen)
+  const [resetCount, setResetCount] = useState(0);
   const socketRef = useRef(null);
 
   const storeGame = useCallback((game) => {
@@ -54,6 +56,10 @@ export function useTracker() {
     socket.on('tick', (payload) => applyState(payload.state));
     socket.on('undo', (payload) => applyState(payload.state));
     socket.on('darts:game', storeGame);
+    socket.on('admin:reset', () => {
+      setGames({});
+      setResetCount((n) => n + 1);
+    });
 
     // Nach dem Aufwecken des Handys sofort neu verbinden statt auf den Backoff zu warten
     const subscription = AppState.addEventListener('change', (appState) => {
@@ -90,6 +96,7 @@ export function useTracker() {
 
   const tick = useCallback((name, challengeId) => emit('tick', { name, challengeId }), [emit]);
   const undo = useCallback((name) => emit('undo', { name }), [emit]);
+  const adminReset = useCallback((name, token) => emit('admin:reset', { name, token }), [emit]);
 
   const darts = useMemo(
     () => ({
@@ -105,5 +112,5 @@ export function useTracker() {
     [emit, emitGame],
   );
 
-  return { state, games, status, lastError, tick, undo, darts };
+  return { state, games, status, lastError, resetCount, tick, undo, adminReset, darts };
 }

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -130,6 +131,29 @@ async function handleAbortGame(payload) {
   return { game };
 }
 
+function adminError(status, message) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+function tokenMatches(token) {
+  if (typeof token !== 'string') return false;
+  const given = Buffer.from(token);
+  const expected = Buffer.from(ADMIN_TOKEN);
+  return given.length === expected.length && crypto.timingSafeEqual(given, expected);
+}
+
+// Alles löschen (Ticks, Darts, Meilensteine) – nur mit ADMIN_TOKEN
+async function handleReset(token, source) {
+  if (!ADMIN_TOKEN) throw adminError(403, 'Reset ist deaktiviert – ADMIN_TOKEN in der .env des Servers setzen');
+  if (!tokenMatches(token)) throw adminError(401, 'Falsches Admin-Passwort');
+  await store.reset();
+  io.emit('state', await store.getState());
+  io.emit('admin:reset');
+  console.log(`[admin] Datenbank zurückgesetzt (über ${source})`);
+}
+
 // --- REST API -------------------------------------------------------------------
 
 const api = express.Router();
@@ -181,15 +205,11 @@ api.post('/undo', async (req, res) => {
 });
 
 api.post('/admin/reset', async (req, res, next) => {
-  if (!ADMIN_TOKEN) return res.status(403).json({ ok: false, error: 'ADMIN_TOKEN ist nicht gesetzt' });
-  if (req.get('x-admin-token') !== ADMIN_TOKEN) return res.status(401).json({ ok: false, error: 'Falscher Token' });
   try {
-    await store.reset();
-    const state = await store.getState();
-    io.emit('state', state);
-    console.log('[admin] Datenbank zurückgesetzt');
+    await handleReset(req.get('x-admin-token'), 'API');
     res.json({ ok: true });
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ ok: false, error: err.message });
     next(err);
   }
 });
@@ -273,6 +293,10 @@ io.on('connection', async (socket) => {
   onAction('darts:abortGame', handleAbortGame);
   onAction('darts:game', async (payload) => ({ game: await store.getDartGame(payload.gameId) }), { limited: false });
   onAction('darts:history', async (payload) => store.getDartHistory(requireName(payload.name)), { limited: false });
+  onAction('admin:reset', async (payload) => {
+    await handleReset(payload.token, `App (${payload.name ?? 'unbekannt'})`);
+    return {};
+  });
 
   // Akzeptiert sowohl emit('state:get', ack) als auch emit('state:get', payload, ack)
   socket.on('state:get', async (...args) => {

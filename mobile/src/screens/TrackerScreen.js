@@ -5,6 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChallengeButton } from '../components/ChallengeButton';
 import { ConnectionBadge } from '../components/ConnectionBadge';
 import { formatNumber } from '../components/DartsWidgets';
+import { AdminResetModal } from '../components/AdminResetModal';
 import { Toast } from '../components/Toast';
 import { SERVER_ADDRESS } from '../config';
 import { COLORS, DARTS_COLOR, FONTS } from '../theme';
@@ -48,6 +49,7 @@ export function TrackerScreen({ name, tracker, onChangeName, onOpenDarts }) {
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState(null);
   const [undoing, setUndoing] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const toastSeq = useRef(0);
   const connected = status === 'connected';
 
@@ -129,7 +131,10 @@ export function TrackerScreen({ name, tracker, onChangeName, onOpenDarts }) {
           </Text>
           <Text style={styles.changeName}>Name ändern</Text>
         </Pressable>
-        <ConnectionBadge status={status} />
+        {/* Versteckt: 3 Sekunden lang auf den Verbindungs-Status drücken öffnet das Admin-Menü */}
+        <Pressable onLongPress={() => setAdminOpen(true)} delayLongPress={3000}>
+          <ConnectionBadge status={status} />
+        </Pressable>
       </View>
 
       {!connected && (
@@ -179,6 +184,7 @@ export function TrackerScreen({ name, tracker, onChangeName, onOpenDarts }) {
       </View>
 
       <Toast key={toast?.key} toast={toast} bottom={Math.max(insets.bottom, 12) + 96} />
+      <AdminResetModal visible={adminOpen} name={name} tracker={tracker} onClose={() => setAdminOpen(false)} />
     </SafeAreaView>
   );
 }

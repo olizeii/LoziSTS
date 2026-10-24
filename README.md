@@ -49,6 +49,18 @@ docker compose up -d --build
 | `expo` | `lan-party-expo` | `exp://10.0.0.210:8081`       | App-Code für Expo Go (kein Laptop nötig) |
 
 **Handys verbinden:** Expo Go öffnen → „Enter URL manually“ → `exp://10.0.0.210:8081`.
+
+**iPhone:**
+1. iPhone ins gleiche WLAN wie der Server.
+2. „Expo Go“ aus dem App Store installieren.
+3. In Safari `exp://10.0.0.210:8081` in die Adresszeile tippen → „In Expo Go öffnen“
+   (oder in Expo Go „Enter URL manually“).
+4. Die Frage nach **„Lokales Netzwerk“ erlauben**. Falls abgelehnt: Einstellungen → Datenschutz & Sicherheit →
+   Lokales Netzwerk → Expo Go einschalten, dann Expo Go neu starten.
+5. Namen eingeben – fertig. Beim nächsten Mal steht das Projekt in Expo Go unter „Recently opened“.
+
+Zeigt Expo Go „Project is incompatible with this version of Expo Go“, passt die SDK-Version des Projekts
+nicht mehr zur App-Store-Version von Expo Go → Projekt auf die neueste SDK heben (`npx expo install expo@latest --fix`).
 Der erste Start dauert etwas (Metro baut das Bundle), danach ist es schnell.
 
 **Ohne Internet auf der Party:** in `docker-compose.yml` beim Dienst `expo` die Zeile `EXPO_OFFLINE: "1"` einkommentieren.
@@ -68,6 +80,11 @@ Der erste Start dauert etwas (Metro baut das Bundle), danach ist es schnell.
 | `git pull && docker compose up -d --build` | Update einspielen |
 | `docker compose cp app:/data/lanparty.db ./backup-lanparty.db` | Datenbank-Backup ziehen |
 | `curl -X POST -H "x-admin-token: DEIN_TOKEN" http://10.0.0.210:3000/api/admin/reset` | Alle Ticks löschen (vor der Party) |
+
+**Versteckter Reset in der App:** Auf dem Hauptscreen das **LIVE-Abzeichen 3 Sekunden gedrückt halten** →
+Admin-Menü → `ADMIN_TOKEN` aus der `.env` als Passwort eingeben → „Alles zurücksetzen“ bestätigen.
+Löscht alle Ticks, Darts, Spiele und Meilensteine; alle Handys springen zurück auf den Startscreen.
+Ohne gesetzten `ADMIN_TOKEN` ist der Reset deaktiviert.
 
 Die SQLite-Datenbank liegt im Docker-Volume `lan-party-tracker_lanparty-data` und überlebt Neustarts und Updates.
 **Achtung:** `docker compose down -v` löscht das Volume und damit alle Daten.

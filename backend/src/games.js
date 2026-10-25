@@ -38,7 +38,7 @@ export const GAMES = [
   { id: 'csgo', type: 'wins', page: 2, label: 'CS:GO', emoji: '💣', color: '#f59e0b', goal: 5, task: '5 Siege' },
   { id: 'fallguys', type: 'wins', page: 2, label: 'Fall Guys', emoji: '👑', color: '#f472b6', goal: 3, task: '3 Siege' },
   { id: 'lethal', type: 'best', page: 2, label: 'Lethal Company', emoji: '🔦', color: '#a3e635', goal: 5, unit: 'Runde', inputLabel: 'Erreichte Runde', min: 1, max: 100, task: 'Bis Runde 5 kommen' },
-  { id: 'dino', type: 'best', page: 2, label: 'Dino Run', emoji: '🦖', color: '#d4d4d8', goal: 10000, unit: 'Punkte', inputLabel: 'Punkte', min: 0, max: 999999, task: '10.000 Punkte' },
+  { id: 'dino', type: 'best', page: 2, label: 'Dino Run', emoji: '🦖', color: '#d4d4d8', goal: 5000, unit: 'Punkte', inputLabel: 'Punkte', min: 0, max: 999999, task: '5.000 Punkte' },
   { id: 'holeio', type: 'best', page: 2, label: 'Hole.io', emoji: '🕳️', color: '#60a5fa', goal: 100, unit: '%', inputLabel: 'Prozent', min: 0, max: 100, task: '100 % schaffen' },
   { id: 'slither', type: 'rank', page: 2, label: 'Slither.io', emoji: '🐍', color: '#4ade80', goal: 1, unit: 'Platz', inputLabel: 'Erreichter Platz', min: 1, max: 1000, task: 'Platz 1 werden' },
   { id: 'timeguessr', type: 'sum', page: 2, label: 'TimeGuessr', emoji: '🕰️', color: '#fbbf24', goal: 2000000, unit: 'Punkte', inputLabel: 'Punkte dieses Spiels', min: 0, max: 50000, task: '2 Mio. Punkte gesamt' },
@@ -64,7 +64,7 @@ function itemOf(game, itemId) {
 // Prüft eine Eingabe aus der App; wirft einen verständlichen Fehler
 export function validateEntry(game, { value, item }) {
   const v = Number(value);
-  if (!Number.isInteger(v)) throw new Error('Bitte eine ganze Zahl eingeben');
+  if (!Number.isInteger(v) && game.type !== 'best') throw new Error('Bitte eine ganze Zahl eingeben');
   switch (game.type) {
     case 'wins':
     case 'streak':
@@ -247,7 +247,7 @@ export function computeGame(game, entries, minecraft = null) {
       }
       extra.items = catalog.map((a) => {
         const e = firstBy.get(a.id);
-        return { id: a.id, tab: a.tab, title: a.title, frame: a.frame, done: Boolean(e), by: e?.name ?? null, at: e?.createdAt ?? null };
+        return { id: a.id, tab: a.tab, title: a.title, titleEn: a.titleEn, description: a.description, frame: a.frame, done: Boolean(e), by: e?.name ?? null, at: e?.createdAt ?? null };
       });
       extra.tabs = ['story', 'nether', 'end', 'adventure', 'husbandry'].map((tab) => {
         const items = extra.items.filter((i) => i.tab === tab);

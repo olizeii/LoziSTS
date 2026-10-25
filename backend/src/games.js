@@ -31,9 +31,8 @@ const MARIO_KART_CUPS = [
   { id: 'lightning', label: 'Blitz-Cup', emoji: '⚡', tracks: ['SNES Mario Circuit 3', 'DS Peach Gardens', 'GCN DK Mountain', "N64 Bowser's Castle"] },
 ];
 
-export const MIN_MINECRAFT_ADVANCEMENTS = 100; //ponytail: Ziel = Katalog, Mindestziel fix 100
-
-const GAMES = [
+const MIN_MINECRAFT_ADVANCEMENTS = 100;
+export const GAMES = [
   { id: 'minecraft', type: 'minecraft', page: 3, label: 'Minecraft', emoji: '⛏️', color: '#4ade80', task: 'Mindestens 100 Advancements', unit: 'Advancements' },
   { id: 'fortnite', type: 'streak', page: 2, label: 'Fortnite', emoji: '🪂', color: '#a78bfa', goal: 3, task: '3 Siege am Stück (B3B)' },
   { id: 'valorant', type: 'wins', page: 2, label: 'Valorant', emoji: '🔺', color: '#fb7185', goal: 5, task: '5 Siege' },

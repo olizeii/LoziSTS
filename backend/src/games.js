@@ -31,8 +31,10 @@ const MARIO_KART_CUPS = [
   { id: 'lightning', label: 'Blitz-Cup', emoji: '⚡', tracks: ['SNES Mario Circuit 3', 'DS Peach Gardens', 'GCN DK Mountain', "N64 Bowser's Castle"] },
 ];
 
-export const GAMES = [
-  { id: 'minecraft', type: 'minecraft', page: 3, label: 'Minecraft', emoji: '⛏️', color: '#4ade80', task: 'Alle Advancements', unit: 'Advancements' },
+export const MIN_MINECRAFT_ADVANCEMENTS = 100; //ponytail: Ziel = Katalog, Mindestziel fix 100
+
+const GAMES = [
+  { id: 'minecraft', type: 'minecraft', page: 3, label: 'Minecraft', emoji: '⛏️', color: '#4ade80', task: 'Mindestens 100 Advancements', unit: 'Advancements' },
   { id: 'fortnite', type: 'streak', page: 2, label: 'Fortnite', emoji: '🪂', color: '#a78bfa', goal: 3, task: '3 Siege am Stück (B3B)' },
   { id: 'valorant', type: 'wins', page: 2, label: 'Valorant', emoji: '🔺', color: '#fb7185', goal: 5, task: '5 Siege' },
   { id: 'csgo', type: 'wins', page: 2, label: 'CS:GO', emoji: '💣', color: '#f59e0b', goal: 5, task: '5 Siege' },
@@ -42,7 +44,7 @@ export const GAMES = [
   { id: 'holeio', type: 'best', page: 2, label: 'Hole.io', emoji: '🕳️', color: '#60a5fa', goal: 100, unit: '%', inputLabel: 'Prozent', min: 0, max: 100, task: '100 % schaffen' },
   { id: 'slither', type: 'rank', page: 2, label: 'Slither.io', emoji: '🐍', color: '#4ade80', goal: 1, unit: 'Platz', inputLabel: 'Erreichter Platz', min: 1, max: 1000, task: 'Platz 1 werden' },
   { id: 'timeguessr', type: 'sum', page: 2, label: 'TimeGuessr', emoji: '🕰️', color: '#fbbf24', goal: 2000000, unit: 'Punkte', inputLabel: 'Punkte dieses Spiels', min: 0, max: 50000, task: '2 Mio. Punkte gesamt' },
-  { id: 'subway', type: 'best', page: 2, label: 'Subway Surfers', emoji: '🛹', color: '#22d3ee', goal: 10000000, unit: 'Punkte', inputLabel: 'Score', min: 0, max: 999999999, task: '10 Mio. Punkte' },
+  { id: 'subway', type: 'best', page: 2, label: 'Subway Surfers', emoji: '🛹', color: '#22d3ee', goal: 3400000, unit: 'Punkte', inputLabel: 'Score', min: 0, max: 999999999, task: '3,4 Mio. Punkte' },
   { id: 'freestyle', type: 'task', page: 2, label: 'Freestyle', emoji: '🎤', color: '#e879f9', goal: 1, task: 'Einen Freestyle machen' },
   { id: 'wwm', type: 'task', page: 2, label: 'Wer wird Millionär', emoji: '💰', color: '#38bdf8', goal: 1, task: 'Einmal durchspielen' },
   { id: 'mariokart', type: 'trophies', page: 3, label: 'Mario Kart Wii', emoji: '🏎️', color: '#ef4444', goal: MARIO_KART_CUPS.length, unit: 'Gold-Pokale', task: 'Alle 8 Cups in 150cc auf Gold', items: MARIO_KART_CUPS },
@@ -257,7 +259,7 @@ export function computeGame(game, entries, minecraft = null) {
       base.goal = catalog.length;
       value = extra.items.filter((i) => i.done).length;
       leaders = topBy(perPlayer, desc, 5);
-      completed = base.goal > 0 && value >= base.goal;
+      completed = value >= MIN_MINECRAFT_ADVANCEMENTS;
       percent = base.goal ? (value / base.goal) * 100 : 0;
       display = `${value} / ${base.goal}`;
       break;

@@ -12,7 +12,7 @@ export const CHALLENGES = [
     unit: 'Cubes',
     unitSingular: 'Cube',
     increment: 1,
-    goal: 500,
+    goal: 250,
     tickMessage: (name, amount) => `🧩 ${name} hat ${amount === 1 ? 'einen' : amount} Rubik's Cube gelöst!`,
   },
   {

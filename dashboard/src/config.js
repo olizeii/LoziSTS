@@ -19,6 +19,7 @@ export const PAGES = [
   { id: 'challenges', label: 'Challenges' },
   { id: 'games', label: 'Games' },
   { id: 'collections', label: 'Mario Kart · Minecraft · Just Dance' },
+  { id: 'winners', label: 'Sieger' },
 ];
 
 // Farbe eines Games (Hex) als CSS-Variablen wie bei den Challenges

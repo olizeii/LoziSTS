@@ -8,6 +8,7 @@ import { Header } from './components/Header.jsx';
 import { Leaderboard } from './components/Leaderboard.jsx';
 import { StartOverlay } from './components/StartOverlay.jsx';
 import { Ticker } from './components/Ticker.jsx';
+import { WinnersPage } from './components/WinnersPage.jsx';
 import { AUTOSTART, PAGES, ROTATE_SECONDS, SERVER_URL, themeFor } from './config.js';
 import { useIdleCursor } from './hooks/useIdleCursor.js';
 import { usePageRotation } from './hooks/usePageRotation.js';
@@ -15,6 +16,10 @@ import { dartsLabel } from './lib/darts.js';
 import { tickBurst } from './lib/effects.js';
 import { sound } from './lib/sound.js';
 import { useTracker } from './lib/useTracker.js';
+
+// /sieger → direkt die Sieger-Seite ohne Rotation
+const WINNERS_ONLY = /^\/(sieger|winners)\/?$/.test(window.location.pathname);
+const WINNERS_PAGE = PAGES.findIndex((p) => p.id === 'winners');
 
 const POP_MS = 1800;
 const TEST_MILESTONES = [25, 50, 75, 100];
@@ -43,7 +48,8 @@ export default function App() {
   const seqRef = useRef(0);
   const stateRef = useRef(null);
   // Während einer Feier bleibt die aktuelle Seite stehen
-  const rotation = usePageRotation(PAGES.length, ROTATE_SECONDS, celebrations.length > 0);
+  const rotation = usePageRotation(PAGES.length, ROTATE_SECONDS, celebrations.length > 0 || WINNERS_ONLY);
+  if (WINNERS_ONLY) rotation.page = WINNERS_PAGE;
   const { showPage } = rotation;
 
   useIdleCursor();
@@ -228,6 +234,7 @@ export default function App() {
 
         {state && rotation.page === 1 && state.games && <GamesPage games={state.games} flashes={flashes} />}
         {state && rotation.page === 2 && state.games && <CollectionsPage games={state.games} flashes={flashes} />}
+        {state && rotation.page === 3 && <WinnersPage state={state} />}
         {state && rotation.page === 0 ? (
           <main className="page-in grid min-h-0 flex-1 grid-rows-[minmax(0,1.6fr)_minmax(0,1fr)] gap-[1.6vh] px-[2.2vw] py-[1.8vh]">
             <div className="grid min-h-0 grid-cols-[1.3fr_1fr] gap-[1.2vw]">

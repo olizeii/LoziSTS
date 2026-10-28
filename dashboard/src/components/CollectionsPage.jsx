@@ -82,6 +82,7 @@ function MarioKartPanel({ game, flash }) {
   );
 }
 
+// Klickbare Advancement-Liste: Tap auf ein Advancement zeigt, was zu tun ist (Beschreibung), plus englischer Titel.
 function MinecraftPanel({ game, flash }) {
   const titles = new Map(game.items.map((i) => [i.id, i.title]));
   // jedes Advancement nur einmal (wer es zuletzt bekommen hat)
@@ -117,7 +118,14 @@ function MinecraftPanel({ game, flash }) {
         ) : (
           recent.map((h) => (
             <li key={h.id} className="flex items-center justify-between gap-[0.5vw] rounded-[0.6vh] bg-white/5 px-[0.6vw] py-[0.35vh]">
-              <span className="truncate text-[1.6vh] font-bold">{titles.get(h.item)}</span>
+              <span className="truncate text-[1.6vh] font-bold">
+                {titles.get(h.item)}
+                {h.createdAt && (
+                  <span className="ml-[0.4vw] text-[1.2vh] font-semibold text-muted tabular-nums">
+                    {new Date(h.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </span>
               <span className="text-accent shrink-0 text-[1.4vh] font-bold">{h.name}</span>
             </li>
           ))

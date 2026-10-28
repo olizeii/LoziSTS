@@ -213,9 +213,13 @@ function WinLossPanel({ game, disabled, onSubmit }) {
 
 function NumberPanel({ game, disabled, busy, onSubmit }) {
   const [text, setText] = useState('');
-  const digits = text.replace(/\D/g, '');
+  // Kommazahlen erlauben (z.B. Hole.io-Prozent 99,5) — Komma oder Punkt
+  const allowDecimal = game.type === 'best';
+  const digits = allowDecimal
+    ? text.replace(/[^0-9.,]/g, '').replace(',', '.').replace(/(\..*)\./g, '$1')
+    : text.replace(/\D/g, '');
   const value = digits ? Number(digits) : null;
-  const valid = value !== null && value >= game.min && value <= game.max;
+  const valid = value !== null && Number.isFinite(value) && value >= game.min && value <= game.max;
 
   async function submit() {
     if (!valid || disabled) return;
@@ -233,7 +237,7 @@ function NumberPanel({ game, disabled, busy, onSubmit }) {
         onChangeText={setText}
         placeholder={game.inputLabel}
         placeholderTextColor={COLORS.muted}
-        keyboardType="number-pad"
+        keyboardType={allowDecimal ? "numbers-and-punctuation" : "number-pad"}
         returnKeyType="done"
         onSubmitEditing={submit}
         style={[styles.input, { borderColor: game.color }]}
@@ -397,6 +401,7 @@ function ChecklistPanel({ game, disabled, onSubmit }) {
 
 function MinecraftPanel({ game }) {
   const [filter, setFilter] = useState('open');
+  const [openItem, setOpenItem] = useState(null);
   const sync = game.sync;
   const items = game.items.filter((a) => (filter === 'open' ? !a.done : filter === 'done' ? a.done : true));
   return (
@@ -431,18 +436,28 @@ function MinecraftPanel({ game }) {
         ]}
       />
       {items.map((a) => (
-        <View key={a.id} style={[styles.songRow, a.done && { borderColor: game.color }]}>
+        <Pressable
+          key={a.id}
+          onPress={() => setOpenItem(openItem?.id === a.id ? null : a)}
+          style={[styles.songRow, a.done && { borderColor: game.color }]}
+        >
           <Text style={styles.songCheck}>{a.done ? '✅' : a.frame === 'challenge' ? '🟪' : a.frame === 'goal' ? '🟦' : '⬜'}</Text>
           <View style={styles.flex}>
             <Text style={styles.songTitle} numberOfLines={1}>
               {a.title}
+              {a.titleEn && a.titleEn !== a.title ? ` · ${a.titleEn}` : ''}
             </Text>
             <Text style={styles.songArtist} numberOfLines={1}>
               {TAB_LABELS[a.tab]}
-              {a.done ? ` · ⛏️ ${a.by}` : ''}
+              {a.done ? ` · ⛏️ ${a.by}${a.at ? ` · ${new Date(a.at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr` : ''}` : ''}
             </Text>
+            {openItem?.id === a.id && a.description ? (
+              <Text style={[styles.songArtist, { marginTop: 4, color: COLORS.text }]}>
+                {a.description}
+              </Text>
+            ) : null}
           </View>
-        </View>
+        </Pressable>
       ))}
     </View>
   );

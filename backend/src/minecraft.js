@@ -80,12 +80,22 @@ export async function readMinecraftSnapshot({ dir, version: versionOverride }) {
   }
 
   const world = await detectWorldName(dir);
-  const advDir = path.join(dir, world, 'advancements');
+  // ponytail: Neuere Vanilla-Server legen advancements unter <welt>/players/advancements ab,
+  // ältere direkt unter <welt>/advancements — beide probieren statt raten.
+  const advCandidates = [path.join(dir, world, 'players', 'advancements'), path.join(dir, world, 'advancements')];
+  let advDir = null;
   let files;
-  try {
-    files = (await fs.readdir(advDir)).filter((f) => f.endsWith('.json'));
-  } catch {
-    return { ok: false, error: `Kein Advancement-Ordner gefunden: ${advDir}` };
+  for (const candidate of advCandidates) {
+    try {
+      files = (await fs.readdir(candidate)).filter((f) => f.endsWith('.json'));
+      advDir = candidate;
+      break;
+    } catch {
+      // nächsten Kandidaten probieren
+    }
+  }
+  if (!advDir) {
+    return { ok: false, error: `Kein Advancement-Ordner gefunden (${advCandidates.join(' oder ')})` };
   }
 
   const version = versionOverride || (await detectVersion(dir));
